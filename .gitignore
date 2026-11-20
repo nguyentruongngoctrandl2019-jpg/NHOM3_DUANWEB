@@ -1,0 +1,33 @@
+
+# CT TECH STORE - Git Ignore
+
+# Node.js và Tailwind CSS
+node_modules/
+npm-debug.log*
+
+# Composer
+vendor/
+
+# File môi trường chứa thông tin nhạy cảm
+.env
+.env.*
+!.env.example
+
+# File tạm và log
+*.log
+*.tmp
+*.cache
+
+# File hệ điều hành
+.DS_Store
+Thumbs.db
+
+# File cấu hình cá nhân của IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+
+# File tải lên và dữ liệu tạm
+app/public/uploads/
+app/storage/cache/
+app/storage/logs/
