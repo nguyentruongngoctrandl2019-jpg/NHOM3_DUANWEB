@@ -1,4 +1,7 @@
 
+/* CT TECH STORE - Tailwind CSS */
+
+/* 1. Khởi tạo Tailwind */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -805,4 +808,55 @@ img {
     .footer-grid {
         grid-template-columns: 1fr;
     }
+/* 2. CSS chung cho website */
+@layer base {
+  body {
+    @apply bg-[#F9FCE7] text-gray-900 font-sans;
+  }
+
+  a {
+    @apply transition-colors duration-200;
+  }
+
+  button {
+    @apply cursor-pointer;
+  }
+}
+
+/* 3. Các thành phần dùng chung */
+@layer components {
+
+  /* Khung nội dung */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Nút màu đỏ */
+  .btn-primary {
+    @apply bg-[#EF233C] text-white px-5 py-3
+           rounded-lg font-semibold
+           hover:bg-red-700 transition;
+  }
+
+  /* Nút viền đỏ */
+  .btn-outline {
+    @apply border border-[#EF233C]
+           text-[#EF233C] px-5 py-3
+           rounded-lg font-semibold
+           hover:bg-red-50 transition;
+  }
+
+  /* Thẻ sản phẩm */
+  .product-card {
+    @apply bg-white rounded-xl shadow-sm
+           overflow-hidden border border-gray-100
+           hover:shadow-lg transition;
+  }
+
+  /* Tiêu đề */
+  .section-title {
+    @apply text-2xl md:text-3xl
+           font-bold text-gray-900;
+  }
+
 }

@@ -16,6 +16,7 @@ $content = $content ?? '';
     <title><?= View::e($pageTitle) ?></title>
 
 <link rel="stylesheet" href="/assets/app.css?v=3">
+    <link rel="stylesheet" href="/assets/app.css">
 </head>
 
 <body class="bg-[#F9FCE7] text-gray-900">

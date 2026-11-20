@@ -15,6 +15,7 @@
         </p>
 
         <a href="/products"
+        <a href="/preview.php"
            class="btn-primary">
             Khám phá cửa hàng
         </a>
