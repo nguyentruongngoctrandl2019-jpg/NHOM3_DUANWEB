@@ -1,4 +1,3 @@
-
 {
     "name": "ct-tech-store/website",
     "description": "Website ban hang dien may CT Tech Store",
@@ -10,7 +9,7 @@
         "ext-pdo_mysql": "*",
         "ext-sodium": "*",
         "guzzlehttp/psr7": "^2.0",
-        "phpdevcommunity/php-router": "3.1.0"
+        "phpdevcommunity/php-router": "^3.1"
     },
     "autoload": {
         "psr-4": {

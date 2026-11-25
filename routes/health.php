@@ -15,4 +15,14 @@ return [
         ],
         'access' => 'public',
     ],
+    [
+        'name' => 'home.index',
+        'method' => 'GET',
+        'path' => '/',
+        'handler' => [
+            HealthController::class,
+            'index'
+        ],
+        'access' => 'public',
+    ],
 ];
