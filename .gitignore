@@ -13,7 +13,8 @@ vendor/
 .env.*
 !.env.example
 
-# File tạm và log
+/public/assets/app.css
+
 *.log
 *.tmp
 *.cache
@@ -31,3 +32,10 @@ Thumbs.db
 app/public/uploads/
 app/storage/cache/
 app/storage/logs/
+.DS_Store
+Thumbs.db
+
+.idea/
+.vscode/
+
+.phpunit.result.cache
