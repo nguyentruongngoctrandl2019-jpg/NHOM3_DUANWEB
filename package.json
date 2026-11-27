@@ -1,0 +1,14 @@
+
+{
+  "name": "ct-tech-store",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Website ban hang dien may CT Tech Store",
+  "scripts": {
+    "css:build": "tailwindcss -i ./resources/css/input.css -o ./public/assets/app.css --minify",
+    "css:watch": "tailwindcss -i ./resources/css/input.css -o ./public/assets/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}
