@@ -1,0 +1,808 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================= 1. CSS CHUNG ================= */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f6f8 !important;
+    color: #1f2937;
+}
+
+a {
+    text-decoration: none;
+}
+
+button {
+    cursor: pointer;
+}
+
+img {
+    max-width: 100%;
+}
+
+.container-custom {
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.home-page {
+    padding-top: 24px;
+    padding-bottom: 40px;
+}
+
+/* ================= 2. HEADER ================= */
+
+.site-header {
+    background: #e31837;
+    color: white;
+}
+
+.header-top {
+    background: #bd102b;
+    padding: 9px 0;
+    font-size: 13px;
+}
+
+.header-main {
+    background: #e31837;
+}
+
+.header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+    padding-top: 24px;
+    padding-bottom: 24px;
+}
+
+.logo {
+    color: white;
+    font-size: 28px;
+    font-weight: 900;
+    white-space: nowrap;
+    letter-spacing: -1px;
+}
+
+.search-box {
+    display: flex;
+    flex: 1;
+    max-width: 650px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.search-box input {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 14px 18px;
+    color: #333;
+    border: none;
+    outline: none;
+    background: white;
+}
+
+.search-box button {
+    background: #a80d25;
+    padding: 12px 20px;
+    color: white;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.header-actions a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.header-actions a:hover {
+    color: #fde68a;
+}
+
+/* ================= 3. MENU ================= */
+
+.navigation {
+    background: white;
+    color: #333;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 3px 10px #00000008;
+}
+
+.navigation ul {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.navigation a {
+    display: block;
+    padding: 18px 12px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.navigation a:hover {
+    color: #e31837;
+    background: #fff1f2;
+}
+
+/* ================= 4. BANNER ================= */
+
+.home-slider {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    margin-bottom: 30px;
+    background: #172b4d;
+}
+
+.banner-slide {
+    display: none;
+    min-height: 400px;
+    padding: 50px 65px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+    color: white;
+}
+
+.banner-slide.active {
+    display: flex;
+}
+
+.slide-one {
+    background: linear-gradient(
+        120deg, #111827, #244875
+    );
+}
+
+.slide-two {
+    background: linear-gradient(
+        120deg, #172554, #2563eb
+    );
+}
+
+.slide-three {
+    background: linear-gradient(
+        120deg, #450a0a, #dc2626
+    );
+}
+
+.banner-content {
+    flex: 1;
+}
+
+.banner-label {
+    display: inline-block;
+    background: #ffffff20;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.banner-content h1,
+.banner-content h2 {
+    font-size: 44px;
+    line-height: 1.2;
+    font-weight: 800;
+    margin: 20px 0;
+}
+
+.banner-content p {
+    font-size: 17px;
+    line-height: 1.7;
+    color: #e5e7eb;
+    margin-bottom: 28px;
+}
+
+.banner-button {
+    display: inline-block;
+    background: #e31837;
+    color: white;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.banner-button:hover {
+    background: white;
+    color: #e31837;
+}
+
+.banner-picture {
+    width: 45%;
+}
+
+.banner-picture img {
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 12px;
+}
+
+.slider-prev,
+.slider-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #ffffff30;
+    color: white;
+    font-size: 18px;
+}
+
+.slider-prev {
+    left: 12px;
+}
+
+.slider-next {
+    right: 12px;
+}
+
+.slider-prev:hover,
+.slider-next:hover {
+    background: #e31837;
+}
+
+.slider-dots {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+}
+
+.slider-dots button {
+    width: 10px;
+    height: 10px;
+    background: #ffffff60;
+    border-radius: 50%;
+}
+
+.slider-dots button.active {
+    width: 28px;
+    background: white;
+    border-radius: 10px;
+}
+
+/* ================= 5. KHUNG NOI DUNG ================= */
+
+.home-section {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    margin-bottom: 28px;
+    box-shadow: 0 3px 15px #00000006;
+}
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 24px;
+}
+
+.section-heading h2,
+.section-title {
+    font-size: 26px;
+    font-weight: 800;
+    border-left: 5px solid #e31837;
+    padding-left: 12px;
+}
+
+.view-all {
+    color: #e31837;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.view-all:hover {
+    text-decoration: underline;
+}
+
+/* ================= 6. DANH MUC ================= */
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.category-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    min-height: 150px;
+    padding: 20px 10px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    text-align: center;
+    transition: 0.25s;
+}
+
+.category-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    height: 76px;
+    background: #ffe4e9;
+    color: #e31837;
+    border-radius: 50%;
+}
+
+.category-icon svg {
+    width: 42px;
+    height: 42px;
+}
+
+.category-card:hover {
+    transform: translateY(-5px);
+    border-color: #e31837;
+    color: #e31837;
+    box-shadow: 0 5px 15px #00000010;
+}
+
+/* ================= 7. SAN PHAM GIAM GIA ================= */
+
+.sale-section {
+    background: linear-gradient(
+        135deg, #fff1f2, #ffe4e6
+    );
+    border: 1px solid #fecdd3;
+}
+
+.sale-section .section-heading h2 {
+    color: #dc1634;
+}
+
+/* ================= 8. SAN PHAM ================= */
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.product-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: 0.3s;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    border-color: #e31837;
+    box-shadow: 0 8px 25px #00000012;
+}
+
+.product-image-box {
+    display: block;
+    padding: 20px;
+    background: white;
+}
+
+.product-image {
+    display: block;
+    width: 100%;
+    height: 220px;
+    object-fit: contain;
+    transition: 0.3s;
+}
+
+.product-card:hover .product-image {
+    transform: scale(1.04);
+}
+
+.product-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 220px;
+    background: #f8fafc;
+    color: #9ca3af;
+    border-radius: 8px;
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 18px;
+}
+
+.product-name {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.5;
+    min-height: 50px;
+    margin-bottom: 12px;
+}
+
+.product-name:hover {
+    color: #e31837;
+}
+
+.product-prices {
+    margin-bottom: 16px;
+}
+
+.product-price {
+    color: #e31837;
+    font-size: 23px;
+    font-weight: 800;
+}
+
+.old-price {
+    color: #9ca3af;
+    font-size: 14px;
+    text-decoration: line-through;
+    margin-top: 5px;
+}
+
+.product-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.product-actions a,
+.product-actions form {
+    flex: 1;
+    min-width: 0;
+}
+
+.product-actions button {
+    width: 100%;
+}
+
+.btn-primary,
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 11px 12px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: 0.2s;
+    text-align: center;
+}
+
+.btn-primary {
+    background: #e31837;
+    color: white;
+    border: 1px solid #e31837;
+}
+
+.btn-primary:hover {
+    background: #b91029;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e31837;
+    color: #e31837;
+}
+
+.btn-outline:hover {
+    background: #fff1f2;
+}
+
+.empty-products {
+    padding: 35px;
+    text-align: center;
+    color: #6b7280;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+/* ================= 9. CAM KET ================= */
+
+.store-benefits {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+    margin: 35px 0;
+}
+
+.benefit-card {
+    background: white;
+    border-top: 4px solid #e31837;
+    border-radius: 12px;
+    padding: 26px 18px;
+    text-align: center;
+}
+
+.benefit-card h3 {
+    color: #e31837;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.benefit-card p {
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* ================= 10. GIOI THIEU ================= */
+
+.store-about {
+    background: white;
+    padding: 30px;
+    border-radius: 14px;
+    margin-bottom: 30px;
+}
+
+.store-about h2 {
+    font-size: 26px;
+    font-weight: 800;
+    margin-bottom: 15px;
+}
+
+.store-about p {
+    font-size: 16px;
+    line-height: 1.9;
+    color: #6b7280;
+}
+
+/* ================= 11. CHI TIET ================= */
+
+.product-detail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 35px;
+    background: white;
+    padding: 30px;
+    border-radius: 14px;
+    margin: 25px 0;
+}
+
+.detail-image {
+    width: 100%;
+    max-height: 450px;
+    object-fit: contain;
+}
+
+.detail-title {
+    font-size: 30px;
+    font-weight: 800;
+    margin-bottom: 20px;
+}
+
+.detail-price {
+    color: #e31837;
+    font-size: 32px;
+    font-weight: 800;
+}
+
+/* ================= 12. GIO HANG ================= */
+
+.cart-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin: 30px 0;
+}
+
+.cart-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.cart-item img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+}
+
+.cart-summary {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    align-self: start;
+}
+
+.cart-total {
+    color: #e31837;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+/* ================= 13. FOOTER ================= */
+
+.site-footer {
+    background: #111827;
+    color: white;
+    padding: 40px 0;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+}
+
+/* ================= 14. RESPONSIVE ================= */
+
+@media (max-width: 1024px) {
+
+    .header-inner {
+        flex-wrap: wrap;
+    }
+
+    .banner-slide {
+        min-height: 320px;
+        padding: 35px 45px;
+    }
+
+    .banner-content h1,
+    .banner-content h2 {
+        font-size: 32px;
+    }
+
+    .category-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .product-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .store-benefits,
+    .footer-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .cart-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+
+    .container-custom {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .logo {
+        font-size: 21px;
+    }
+
+    .header-inner {
+        gap: 15px;
+    }
+
+    .header-actions {
+        gap: 12px;
+        font-size: 12px;
+    }
+
+    .search-box {
+        order: 3;
+        flex-basis: 100%;
+    }
+
+    .navigation ul {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .navigation a {
+        white-space: nowrap;
+        font-size: 13px;
+    }
+
+    .banner-slide.active {
+        flex-direction: column;
+        padding: 30px 25px 45px;
+    }
+
+    .banner-content h1,
+    .banner-content h2 {
+        font-size: 27px;
+    }
+
+    .banner-picture {
+        width: 85%;
+    }
+
+    .home-section {
+        padding: 14px;
+    }
+
+    .section-heading h2,
+    .section-title {
+        font-size: 19px;
+    }
+
+    .category-grid,
+    .product-grid,
+    .store-benefits {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .product-image-box {
+        padding: 10px;
+    }
+
+    .product-image,
+    .product-placeholder {
+        height: 150px;
+    }
+
+    .product-info {
+        padding: 12px;
+    }
+
+    .product-name {
+        font-size: 14px;
+    }
+
+    .product-price {
+        font-size: 17px;
+    }
+
+    .product-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .product-detail,
+    .footer-grid {
+        grid-template-columns: 1fr;
+    }
+}
