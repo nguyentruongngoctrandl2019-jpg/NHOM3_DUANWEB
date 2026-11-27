@@ -33,7 +33,7 @@ class HealthController
         );
 namespace app\Controllers;
 
-use app\Support\Http;
+use App\Support\Http;
 use GuzzleHttp\Psr7\Response;
 use Psr\Http\Message\{ServerRequestInterface, ResponseInterface};
 

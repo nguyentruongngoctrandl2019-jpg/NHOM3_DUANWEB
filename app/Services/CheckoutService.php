@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace app\Services;
+namespace App\Services;
 
-use app\Models\{Cart, CheckoutInventory, Order};
-use app\Support\{Database, Money};
+use App\Models\{Cart, CheckoutInventory, Order};
+use App\Support\{Database, Money};
 use DomainException;
 use PDO;
 use PDOException;

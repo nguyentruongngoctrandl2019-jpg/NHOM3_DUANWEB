@@ -106,11 +106,38 @@ $files = glob(__DIR__ . '/*.php');
 sort($files, SORT_STRING);
 
 foreach ($files as $file) {
-    if ($file === __FILE__) {
+    $fileName = basename($file);
+
+    if (strcasecmp($fileName, basename(__FILE__)) === 0) {
         continue;
     }
 
-    foreach (require $file as $definition) {
+    $definitions = require $file;
+    
+    $fileName = basename($file);
+
+    if (!is_array($definitions)) {
+        throw new LogicException(
+            "File route {$fileName} phải dùng return [...]. "
+            . 'Kiểu nhận được: ' . get_debug_type($definitions)
+        );
+    }
+
+    foreach ($definitions as $index => $definition) {
+        if (!is_array($definition)
+            || !isset(
+                $definition['name'],
+                $definition['path'],
+                $definition['method'],
+                $definition['handler'],
+                $definition['access']
+            )
+        ) {
+            throw new LogicException(
+                "File {$fileName}, mục {$index}: khai báo route thiếu trường."
+            );
+        }
+
         [
             'name' => $name,
             'path' => $path,
@@ -119,14 +146,30 @@ foreach ($files as $file) {
             'access' => $access,
         ] = $definition;
 
-        if (isset($metadata[$name])
-            || isset($paths[$method . $path])
+        if (!is_string($name) || $name === ''
+            || !is_string($path) || !str_starts_with($path, '/')
             || !in_array($method, ['GET', 'POST'], true)
-            || !str_starts_with($path, '/')
-            || !method_exists(...$handler)
+            || !is_string($access)
             || !preg_match('/\A(public|login|[a-z]+\.manage)\z/', $access)
         ) {
-            throw new LogicException('Invalid or duplicate route: ' . $name);
+            throw new LogicException(
+                "File {$fileName}, mục {$index}: tên, đường dẫn, method hoặc quyền không hợp lệ."
+            );
+        }
+
+        if (isset($metadata[$name]) || isset($paths[$method . $path])) {
+            throw new LogicException("File {$fileName}: route bị trùng: {$name}.");
+        }
+
+        if (!is_array($handler)
+            || count($handler) !== 2
+            || !is_string($handler[0] ?? null)
+            || !is_string($handler[1] ?? null)
+            || !method_exists($handler[0], $handler[1])
+        ) {
+            throw new LogicException(
+                "File {$fileName}, route {$name}: kiểm tra class và tên hàm trong handler."
+            );
         }
 
         $metadata[$name] = $access;
@@ -136,7 +179,7 @@ foreach ($files as $file) {
 }
 
 return [
-    new Router($routes, getenv('APP_URL') ?: 'http://localhost:8000'),
+    new Router($routes, getenv('APP_URL') ?: 'http://127.0.0.1:8001'),
     $routes,
     $metadata,
 ];

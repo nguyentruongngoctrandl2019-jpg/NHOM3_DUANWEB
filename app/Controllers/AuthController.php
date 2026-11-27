@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace app\Controllers;
+namespace App\Controllers;
 
-use app\Models\User;
-use app\Support\{Auth, Http, Input, Session};
+use App\Models\User;
+use App\Support\{Auth, Http, Input, Session};
 use PDOException;
 use Psr\Http\Message\{ServerRequestInterface, ResponseInterface};
 

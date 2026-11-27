@@ -363,7 +363,7 @@ class Kernel
         }
 namespace app\Support;
 
-use app\Controllers\{
+use App\Controllers\{
     AdminOrderController,
     AdminProductController,
     AuthController,
@@ -373,8 +373,8 @@ use app\Controllers\{
     OrderController,
     ProductController
 };
-use app\Models\{AdminProduct, Cart, Category, CheckoutInventory, Order, Permission, Product, User};
-use app\Services\{CartService, CheckoutService};
+use App\Models\{AdminProduct, Cart, Category, CheckoutInventory, Order, Permission, Product, User};
+use App\Services\{CartService, CheckoutService};
 use PDO;
 use PhpDevCommunity\Exception\{MethodNotAllowed, RouteNotFound};
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
@@ -386,7 +386,7 @@ final class Kernel
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         [$router, $routes, $accessMap] = require __DIR__ . '/../../routes/web.php';
-
+        
         try {
             $matched = $router->match($request);
         } catch (RouteNotFound) {

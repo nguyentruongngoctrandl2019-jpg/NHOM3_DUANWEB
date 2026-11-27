@@ -698,7 +698,7 @@ final class AdminProduct
 }
 namespace app\Models;
 
-use app\Support\Database;
+use App\Support\Database;
 use DomainException;
 use PDO;
 

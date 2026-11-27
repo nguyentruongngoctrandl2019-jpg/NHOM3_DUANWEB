@@ -541,8 +541,8 @@ final class AdminProductController
 }
 namespace app\Controllers;
 
-use app\Models\{AdminProduct, Category};
-use app\Support\{Http, Input, Money};
+use App\Models\{AdminProduct, Category};
+use App\Support\{Http, Input, Money};
 use DomainException;
 use InvalidArgumentException;
 use PDOException;

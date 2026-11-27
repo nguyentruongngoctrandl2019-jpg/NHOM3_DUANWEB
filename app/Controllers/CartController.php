@@ -105,11 +105,11 @@ class CartController
 
 declare(strict_types=1);
 
-namespace app\Controllers;
+namespace App\Controllers;
 
-use app\Models\Cart;
-use app\Services\CartService;
-use app\Support\{Auth, Http, Input};
+use App\Models\Cart;
+use App\Services\CartService;
+use App\Support\{Auth, Http, Input};
 use DomainException;
 use Psr\Http\Message\{ServerRequestInterface, ResponseInterface};
 

@@ -3,7 +3,7 @@
         'name' => 'cttech/store',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '1a3b07cdadbe6a70a8d84390dfd28dd47ed2b644',
+        'reference' => '19e5118ac16f2b11bd1925141bfb0847f6bcbcad',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'cttech/store' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '1a3b07cdadbe6a70a8d84390dfd28dd47ed2b644',
+            'reference' => '19e5118ac16f2b11bd1925141bfb0847f6bcbcad',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -806,3 +806,112 @@ img {
         grid-template-columns: 1fr;
     }
 }
+@import "tailwindcss" source(none);
+@source "../../app/Views";
+
+body {
+    background: #f4f8f6;
+    color: #152924;
+}
+
+.wrap {
+    width: min(1120px, calc(100% - 2rem));
+    margin-inline: auto;
+}
+
+header.wrap {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 1rem;
+    font-weight: 700;
+}
+
+header nav {
+    display: flex;
+    gap: 1rem;
+}
+
+.site-main {
+    padding-block: 1.5rem 3rem;
+}
+
+.hero {
+    padding: clamp(1.5rem, 5vw, 4rem);
+    border-radius: 1rem;
+    background: #073b34;
+    color: white;
+}
+
+.hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1.1;
+    font-weight: 800;
+}
+
+.hero p {
+    margin-block: 1rem;
+}
+
+.section-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-block: 1.5rem 1rem;
+}
+
+.section-head h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.panel,
+.product-card {
+    padding: 1rem;
+    border: 1px solid #dce8e2;
+    border-radius: .75rem;
+    background: white;
+}
+
+.filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.filter label {
+    display: grid;
+    gap: .35rem;
+}
+
+.filter input,
+.filter select {
+    padding: .55rem .75rem;
+    border: 1px solid #b9ccc4;
+    border-radius: .5rem;
+}
+
+.button {
+    display: inline-block;
+    padding: .6rem 1rem;
+    border-radius: .5rem;
+    background: #0b7161;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.split {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.price {
+    color: #0b7161;
+}

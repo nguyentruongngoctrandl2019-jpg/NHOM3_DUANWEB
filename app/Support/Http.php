@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace app\Support;
+namespace App\Support;
 
 use GuzzleHttp\Psr7\Response;
-use app\Support\View;
+use App\Support\View;
 
 final class Http
 {

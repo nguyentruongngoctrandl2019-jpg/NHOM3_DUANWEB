@@ -46,7 +46,7 @@ class Database
         return self::$connection;
 declare(strict_types=1);
 
-namespace app\Support;
+namespace App\Support;
 
 use PDO;
 use PDOException;

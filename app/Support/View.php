@@ -76,7 +76,7 @@ $money = static fn(int|float|string $amount): string
 
 declare(strict_types=1);
 
-namespace app\Support;
+namespace App\Support;
 
 
 final class View

@@ -23,6 +23,10 @@ return [
             HealthController::class,
             'index'
         ],
+        'name' => 'health',
+        'method' => 'GET',
+        'path' => '/health',
+        'handler' => [HealthController::class, 'index'],
         'access' => 'public',
     ],
 ];

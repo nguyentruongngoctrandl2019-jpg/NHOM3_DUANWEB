@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace app\Controllers;
+namespace App\Controllers;
 
-use app\Models\{Category, Product};
-use app\Support\{Http, Input};
+use App\Models\{Category, Product};
+use App\Support\{Http, Input};
 use Psr\Http\Message\{ServerRequestInterface, ResponseInterface};
 
 final class ProductController
