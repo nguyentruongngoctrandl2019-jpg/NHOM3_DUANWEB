@@ -2,58 +2,164 @@
 <?php
 use App\Support\View;
 
-$products = $products ?? [];
+$pageTitle = 'Trang chủ - CT TECH STORE';
 
-$saleProducts = $saleProducts ?? array_slice($products, 0, 4);
-$bestSellers = $bestSellers ?? array_slice($products, 0, 4);
-$featuredProducts = $featuredProducts ?? array_slice($products, 0, 8);
+$products = $products ?? [];
+$saleProducts = $saleProducts ?? [];
+$bestSellers = $bestSellers ?? [];
+$featuredProducts = $featuredProducts ?? [];
+
+$homeCategories = [
+    ['name' => 'Điện thoại', 'slug' => 'dien-thoai', 'icon' => 'M7 2h10v20H7z M10 18h4'],
+    ['name' => 'Laptop', 'slug' => 'laptop', 'icon' => 'M4 3h16v14H4z M2 20h20'],
+    ['name' => 'Màn hình', 'slug' => 'man-hinh', 'icon' => 'M2 3h20v14H2z M12 17v5 M7 22h10'],
+    ['name' => 'Tai nghe', 'slug' => 'tai-nghe', 'icon' => 'M3 14v-3a9 9 0 0 1 18 0v3 M3 13h5v8H3z M16 13h5v8h-5z'],
+    ['name' => 'Bàn phím', 'slug' => 'ban-phim', 'icon' => 'M2 5h20v14H2z M5 9h2 M9 9h2 M13 9h2 M17 9h2 M6 15h12'],
+    ['name' => 'Phụ kiện', 'slug' => 'phu-kien', 'icon' => 'M12 2a7 7 0 0 1 7 7v6a7 7 0 0 1-14 0V9a7 7 0 0 1 7-7z M12 2v7']
+];
+
+$sections = [
+    [
+        'title' => 'Sản phẩm giảm giá',
+        'class' => 'sale-section',
+        'products' => array_slice($saleProducts, 0, 4)
+    ],
+    [
+        'title' => 'Sản phẩm bán chạy',
+        'class' => 'bestseller-section',
+        'products' => array_slice($bestSellers, 0, 4)
+    ],
+    [
+        'title' => 'Sản phẩm nổi bật',
+        'class' => 'featured-section',
+        'products' => array_slice($featuredProducts, 0, 4)
+    ],
+    [
+        'title' => 'Tất cả sản phẩm',
+        'class' => 'all-products-section',
+        'products' => $products
+    ]
+];
 ?>
 
-<div class="container-custom py-8">
+<div class="container-custom home-page">
 
-    <!-- BANNER TRANG CHỦ -->
-    <section class="hero-banner mb-8">
+    <!-- 1. BANNER -->
+    <section class="home-slider" id="homeSlider">
 
-        <div>
-            <p class="font-bold uppercase">
-                CT TECH STORE
-            </p>
+        <div class="banner-slide slide-one active">
+            <div class="banner-content">
+                <span class="banner-label">
+                    CT TECH STORE
+                </span>
 
-            <h1>
-                Công nghệ hiện đại
-                <br>
-                Nâng tầm cuộc sống
-            </h1>
+                <h1>
+                    Công nghệ hiện đại<br>
+                    Nâng tầm cuộc sống
+                </h1>
 
-            <p>
-                Khám phá các sản phẩm công nghệ
-                phù hợp với nhu cầu của bạn.
-            </p>
+                <p>
+                    Khám phá các sản phẩm công nghệ
+                    chính hãng với mức giá hấp dẫn.
+                </p>
 
-            <a href="/products" class="btn-primary">
-                Mua sắm ngay
-            </a>
+                <a href="/products" class="banner-button">
+                    Mua sắm ngay
+                </a>
+            </div>
+
+            <div class="banner-picture">
+                <img src="https://images.unsplash.com/photo-1498049794561-7780e7231661?w=900"
+                     alt="Sản phẩm công nghệ">
+            </div>
+        </div>
+
+        <div class="banner-slide slide-two">
+            <div class="banner-content">
+                <span class="banner-label">
+                    LAPTOP CHÍNH HÃNG
+                </span>
+
+                <h2>
+                    Hiệu năng mạnh mẽ<br>
+                    Làm việc hiệu quả
+                </h2>
+
+                <p>
+                    Laptop dành cho học tập,
+                    làm việc và giải trí.
+                </p>
+
+                <a href="/products?category=laptop"
+                   class="banner-button">
+                    Khám phá ngay
+                </a>
+            </div>
+
+            <div class="banner-picture">
+                <img src="https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=900"
+                     alt="Laptop chính hãng">
+            </div>
+        </div>
+
+        <div class="banner-slide slide-three">
+            <div class="banner-content">
+                <span class="banner-label">
+                    PHỤ KIỆN CÔNG NGHỆ
+                </span>
+
+                <h2>
+                    Trải nghiệm tuyệt vời<br>
+                    Giá cả hợp lý
+                </h2>
+
+                <p>
+                    Tai nghe, bàn phím và các
+                    phụ kiện công nghệ tiện ích.
+                </p>
+
+                <a href="/products?category=phu-kien"
+                   class="banner-button">
+                    Xem sản phẩm
+                </a>
+            </div>
+
+            <div class="banner-picture">
+                <img src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=900"
+                     alt="Phụ kiện công nghệ">
+            </div>
+        </div>
+
+        <!-- Nút chuyển banner -->
+        <button type="button"
+                class="slider-prev"
+                aria-label="Banner trước">
+            &#10094;
+        </button>
+
+        <button type="button"
+                class="slider-next"
+                aria-label="Banner tiếp theo">
+            &#10095;
+        </button>
+
+        <div class="slider-dots">
+            <button type="button" class="active"
+                    aria-label="Banner 1"></button>
+            <button type="button"
+                    aria-label="Banner 2"></button>
+            <button type="button"
+                    aria-label="Banner 3"></button>
         </div>
 
     </section>
 
-    <!-- DANH MỤC SẢN PHẨM -->
-    <section class="mb-10">
+    <!-- 2. DANH MỤC NỔI BẬT -->
+    <section class="home-section">
 
-        <h2 class="section-title">
-            Danh mục sản phẩm
-        </h2>
-
-        <?php
-        $homeCategories = [
-            ['name' => 'Điện thoại', 'slug' => 'dien-thoai', 'icon' => 'M7 2h10v20H7z M10 18h4'],
-            ['name' => 'Laptop', 'slug' => 'laptop', 'icon' => 'M4 3h16v14H4z M2 20h20'],
-            ['name' => 'Màn hình', 'slug' => 'man-hinh', 'icon' => 'M2 3h20v14H2z M12 17v5 M7 22h10'],
-            ['name' => 'Tai nghe', 'slug' => 'tai-nghe', 'icon' => 'M3 14v-3a9 9 0 0 1 18 0v3 M3 13h5v8H3z M16 13h5v8h-5z'],
-            ['name' => 'Bàn phím', 'slug' => 'ban-phim', 'icon' => 'M2 5h20v14H2z M5 9h2 M9 9h2 M13 9h2 M17 9h2 M6 15h12'],
-            ['name' => 'Phụ kiện', 'slug' => 'phu-kien', 'icon' => 'M12 2a7 7 0 0 1 7 7v6a7 7 0 0 1-14 0V9a7 7 0 0 1 7-7z M12 2v7']
-        ];
-        ?>
+        <div class="section-heading">
+            <h2>Danh mục nổi bật</h2>
+        </div>
 
         <div class="category-grid">
 
@@ -62,16 +168,20 @@ $featuredProducts = $featuredProducts ?? array_slice($products, 0, 8);
                 <a href="/products?category=<?= View::e($category['slug']) ?>"
                    class="category-card">
 
-                    <svg viewBox="0 0 24 24"
-                         fill="none"
-                         stroke="currentColor"
-                         stroke-width="1.5"
-                         stroke-linecap="round"
-                         stroke-linejoin="round">
+                    <div class="category-icon">
+                        <svg width="42"
+                             height="42"
+                             viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="1.5"
+                             stroke-linecap="round"
+                             stroke-linejoin="round">
 
-                        <path d="<?= View::e($category['icon']) ?>"/>
+                            <path d="<?= View::e($category['icon']) ?>"/>
 
-                    </svg>
+                        </svg>
+                    </div>
 
                     <strong>
                         <?= View::e($category['name']) ?>
@@ -85,40 +195,20 @@ $featuredProducts = $featuredProducts ?? array_slice($products, 0, 8);
 
     </section>
 
-    <!-- CÁC NHÓM SẢN PHẨM -->
-    <?php
-    $sections = [
-        [
-            'title' => 'Sản phẩm giảm giá',
-            'products' => $saleProducts
-        ],
-        [
-            'title' => 'Sản phẩm bán chạy',
-            'products' => $bestSellers
-        ],
-        [
-            'title' => 'Sản phẩm nổi bật',
-            'products' => $featuredProducts
-        ],
-        [
-            'title' => 'Tất cả sản phẩm',
-            'products' => $products
-        ]
-    ];
-    ?>
+    <!-- 3. CÁC NHÓM SẢN PHẨM -->
 
     <?php foreach ($sections as $section): ?>
 
-        <section class="mb-12">
+        <section class="home-section <?= View::e($section['class']) ?>">
 
-            <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
+            <div class="section-heading">
 
-                <h2 class="section-title">
+                <h2>
                     <?= View::e($section['title']) ?>
                 </h2>
 
-                <a href="/products" class="btn-outline">
-                    Xem tất cả
+                <a href="/products" class="view-all">
+                    Xem tất cả &#8594;
                 </a>
 
             </div>
@@ -130,39 +220,42 @@ $featuredProducts = $featuredProducts ?? array_slice($products, 0, 8);
                     <?php
                     $id = (int) ($product['id'] ?? 0);
                     $name = (string) ($product['name'] ?? '');
-                    $price = (float) ($product['price'] ?? 0);
-                    $image = (string) ($product['image'] ?? '');
-                    $oldPrice = (float) ($product['old_price'] ?? 0);
+                    $price = (string) ($product['price'] ?? '0');
+                    $oldPrice = (string) ($product['old_price'] ?? '0');
+
+                    $image = (string) (
+                        $product['image_url']
+                        ?? $product['image']
+                        ?? ''
+                    );
                     ?>
 
                     <article class="product-card">
 
-                        <!-- HÌNH ẢNH -->
-                        <a href="/products/<?= $id ?>">
+                        <!-- Ảnh sản phẩm -->
+                        <a href="/products/<?= $id ?>"
+                           class="product-image-box">
 
                             <?php if ($image !== ''): ?>
 
-                                <img
-                                    src="<?= View::e($image) ?>"
-                                    alt="<?= View::e($name) ?>"
-                                    class="product-image"
-                                    loading="lazy"
-                                >
+                                <img src="<?= View::e($image) ?>"
+                                     alt="<?= View::e($name) ?>"
+                                     class="product-image"
+                                     loading="lazy">
 
                             <?php else: ?>
 
-                                <div class="product-image bg-gray-100 rounded-lg flex items-center justify-center">
+                                <div class="product-placeholder">
 
-                                    <svg width="65"
-                                         height="65"
+                                    <svg width="60"
+                                         height="60"
                                          viewBox="0 0 24 24"
                                          fill="none"
-                                         stroke="#9ca3af"
+                                         stroke="currentColor"
                                          stroke-width="1.5">
 
                                         <rect x="3" y="3"
-                                              width="18"
-                                              height="18"
+                                              width="18" height="18"
                                               rx="2"/>
 
                                         <circle cx="8" cy="8" r="2"/>
@@ -171,55 +264,82 @@ $featuredProducts = $featuredProducts ?? array_slice($products, 0, 8);
 
                                     </svg>
 
+                                    <span>Chưa có ảnh</span>
+
                                 </div>
 
                             <?php endif; ?>
 
                         </a>
 
-                        <!-- TÊN SẢN PHẨM -->
-                        <h3 class="product-name">
-                            <?= View::e($name) ?>
-                        </h3>
+                        <!-- Thông tin sản phẩm -->
+                        <div class="product-info">
 
-                        <!-- GIÁ CŨ -->
-                        <?php if ($oldPrice > $price): ?>
+                            <h3 class="product-name">
 
-                            <p class="old-price">
-                                <?= View::money($oldPrice) ?>
-                            </p>
+                                <a href="/products/<?= $id ?>">
+                                    <?= View::e($name) ?>
+                                </a>
 
-                        <?php endif; ?>
+                            </h3>
 
-                        <!-- GIÁ BÁN -->
-                        <p class="product-price">
-                            <?= View::money($price) ?>
-                        </p>
+                            <div class="product-prices">
 
-                        <!-- NÚT MUA HÀNG -->
-                        <div class="product-actions">
+                                <p class="product-price">
+                                    <?= View::money($price) ?>
+                                </p>
 
-                            <a href="/products/<?= $id ?>"
-                               class="btn-outline">
-                                Chi tiết
-                            </a>
+                                <?php if ($oldPrice > $price): ?>
 
-                            <form action="/cart/add" method="POST">
+                                    <p class="old-price">
+                                        <?= View::money($oldPrice) ?>
+                                    </p>
 
-                                <input type="hidden"
-                                       name="product_id"
-                                       value="<?= $id ?>">
+                                <?php endif; ?>
 
-                                <input type="hidden"
-                                       name="quantity"
-                                       value="1">
+                            </div>
 
-                                <button type="submit"
-                                        class="btn-primary">
-                                    Thêm giỏ
-                                </button>
+                            <div class="product-actions">
 
-                            </form>
+                                <a href="/products/<?= $id ?>"
+                                   class="btn-outline">
+                                    Chi tiết
+                                </a>
+
+                                <form action="/cart/add"
+                                      method="POST">
+
+                                    <input type="hidden"
+                                           name="product_id"
+                                           value="<?= $id ?>">
+
+                                    <input type="hidden"
+                                           name="quantity"
+                                           value="1">
+
+                                    <button type="submit"
+                                            class="btn-primary">
+
+                                        <svg width="18"
+                                             height="18"
+                                             viewBox="0 0 24 24"
+                                             fill="none"
+                                             stroke="currentColor"
+                                             stroke-width="2">
+
+                                            <path d="M2 3h3l3 12h11l3-9H6"/>
+                                            <circle cx="9" cy="20" r="1"/>
+                                            <circle cx="19" cy="20" r="1"/>
+
+                                        </svg>
+
+                                        Thêm giỏ
+
+                                    </button>
+
+                                </form>
+
+                            </div>
 
                         </div>
 
@@ -231,9 +351,9 @@ $featuredProducts = $featuredProducts ?? array_slice($products, 0, 8);
 
             <?php if (empty($section['products'])): ?>
 
-                <p class="bg-white p-6 rounded-lg text-center">
+                <div class="empty-products">
                     Sản phẩm đang được cập nhật.
-                </p>
+                </div>
 
             <?php endif; ?>
 
@@ -241,72 +361,104 @@ $featuredProducts = $featuredProducts ?? array_slice($products, 0, 8);
 
     <?php endforeach; ?>
 
-    <!-- BANNER PHỤ -->
-    <section class="bg-gray-900 text-white rounded-xl p-10 mb-10">
+    <!-- 4. CAM KẾT CỬA HÀNG -->
 
-        <h2 class="text-3xl font-bold mb-4">
-            Khám phá thế giới công nghệ
-        </h2>
+    <section class="store-benefits">
 
-        <p class="mb-6">
-            Điện thoại, laptop và phụ kiện dành cho
-            học tập, làm việc và giải trí.
-        </p>
-
-        <a href="/products" class="btn-primary">
-            Khám phá ngay
-        </a>
-
-    </section>
-
-    <!-- CAM KẾT CỬA HÀNG -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-
-        <div class="bg-white rounded-xl p-6 text-center shadow-sm">
-            <h3 class="text-lg font-bold text-red-600 mb-2">
-                Sản phẩm chính hãng
-            </h3>
-            <p>Thông tin nguồn gốc rõ ràng.</p>
+        <div class="benefit-card">
+            <h3>Sản phẩm chính hãng</h3>
+            <p>Nguồn gốc sản phẩm rõ ràng.</p>
         </div>
 
-        <div class="bg-white rounded-xl p-6 text-center shadow-sm">
-            <h3 class="text-lg font-bold text-red-600 mb-2">
-                Giao hàng toàn quốc
-            </h3>
+        <div class="benefit-card">
+            <h3>Giao hàng toàn quốc</h3>
             <p>Mua sắm trực tuyến tiện lợi.</p>
         </div>
 
-        <div class="bg-white rounded-xl p-6 text-center shadow-sm">
-            <h3 class="text-lg font-bold text-red-600 mb-2">
-                Chính sách bảo hành
-            </h3>
-            <p>Hỗ trợ bảo hành sản phẩm.</p>
+        <div class="benefit-card">
+            <h3>Hỗ trợ bảo hành</h3>
+            <p>Chính sách bảo hành sản phẩm.</p>
         </div>
 
-        <div class="bg-white rounded-xl p-6 text-center shadow-sm">
-            <h3 class="text-lg font-bold text-red-600 mb-2">
-                Hỗ trợ khách hàng
-            </h3>
+        <div class="benefit-card">
+            <h3>Hỗ trợ khách hàng</h3>
             <p>Tư vấn lựa chọn sản phẩm.</p>
         </div>
 
     </section>
 
-    <!-- GIỚI THIỆU CỬA HÀNG -->
-    <section class="bg-white rounded-xl p-8 mb-10">
+    <!-- 5. GIỚI THIỆU -->
 
-        <h2 class="section-title">
-            Về CT TECH STORE
-        </h2>
+    <section class="store-about">
 
-        <p class="leading-8 text-gray-600">
+        <h2>Về CT TECH STORE</h2>
+
+        <p>
             CT TECH STORE là website bán hàng điện máy
-            trực tuyến tại Cần Thơ, cung cấp các sản phẩm
-            điện thoại, laptop, màn hình và phụ kiện công nghệ.
-            Chúng tôi hướng đến trải nghiệm mua sắm thuận tiện,
-            giao diện dễ sử dụng và hỗ trợ khách hàng trên toàn quốc.
+            trực tuyến tại Cần Thơ, chuyên cung cấp
+            điện thoại, laptop, màn hình và phụ kiện
+            công nghệ. Chúng tôi hướng đến trải nghiệm
+            mua sắm thuận tiện và hỗ trợ khách hàng
+            trên toàn quốc.
         </p>
 
     </section>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const slider = document.querySelector('#homeSlider');
+
+    if (!slider) return;
+
+    const slides = slider.querySelectorAll('.banner-slide');
+    const dots = slider.querySelectorAll('.slider-dots button');
+    const prev = slider.querySelector('.slider-prev');
+    const next = slider.querySelector('.slider-next');
+
+    let current = 0;
+
+    // Hiển thị banner
+    function showSlide(index) {
+
+        current = (index + slides.length) % slides.length;
+
+        slides.forEach(function (slide) {
+            slide.classList.remove('active');
+        });
+
+        dots.forEach(function (dot) {
+            dot.classList.remove('active');
+        });
+
+        slides[current].classList.add('active');
+        dots[current].classList.add('active');
+    }
+
+    // Chuyển ảnh tiếp theo
+    next.addEventListener('click', function () {
+        showSlide(current + 1);
+    });
+
+    // Quay lại ảnh trước
+    prev.addEventListener('click', function () {
+        showSlide(current - 1);
+    });
+
+    // Chuyển ảnh bằng dấu chấm
+    dots.forEach(function (dot, index) {
+        dot.addEventListener('click', function () {
+            showSlide(index);
+        });
+    });
+
+    // Tự động chuyển ảnh sau 5 giây
+    setInterval(function () {
+        showSlide(current + 1);
+    }, 5000);
+
+});
+</script>
+
