@@ -68,6 +68,21 @@ ghi mã đơn, số đơn và tồn kho trước/sau để đối chiếu.
 Mỗi lỗi được giao cho người phụ trách module và sửa bằng PR riêng.
 Sau khi PR được ghép, ghi commit mới và kết quả chạy lại của ca bị ảnh hưởng.
 
+## Nghiệm thu trên nhánh tích hợp
+
+- Nhánh:
+- Commit đã kiểm tra:
+- File SQL đã nhập:
+- Người kiểm tra:
+
+| Ca kiểm thử | Kết quả thực tế | Trạng thái |
+| --- | --- | --- |
+| Giỏ → COD → Xem đơn | Mã đơn: …, tồn trước: …, tồn sau: … | Chưa chạy |
+| Admin cập nhật trạng thái | … | Chưa chạy |
+| Gửi lại cùng token | … | Chưa chạy |
+| Thiếu tồn hoặc lỗi ghi đơn | … | Chưa chạy |
+| Khách mở đơn người khác | … | Chưa chạy |
+
 ## 6. Kết luận nghiệm thu
 
 - Demo catalog → đăng ký → giỏ → COD → xem đơn → admin: Chưa chạy.

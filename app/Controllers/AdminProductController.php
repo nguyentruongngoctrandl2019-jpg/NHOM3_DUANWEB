@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace app\Controllers;
+namespace App\Controllers;
 
-use app\Models\{AdminProduct, Category};
-use app\Support\{Http, Input, Money};
+use App\Models\{AdminProduct, Category};
+use App\Support\{Http, Input, Money};
 use DomainException;
 use InvalidArgumentException;
 use PDOException;

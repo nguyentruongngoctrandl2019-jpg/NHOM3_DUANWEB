@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace app\Controllers;
+namespace App\Controllers;
 
-use app\Support\Http;
+use App\Support\Http;
 use GuzzleHttp\Psr7\Response;
 use Psr\Http\Message\{ServerRequestInterface, ResponseInterface};
 

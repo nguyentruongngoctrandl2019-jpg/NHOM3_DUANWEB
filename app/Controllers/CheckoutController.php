@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace app\Controllers;
+namespace App\Controllers;
 
-use app\Models\Cart;
-use app\Services\{CartService, CheckoutService};
-use app\Support\{Auth, Http, Input};
+use App\Models\Cart;
+use App\Services\{CartService, CheckoutService};
+use App\Support\{Auth, Http, Input};
 use DomainException;
 use InvalidArgumentException;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace app\Controllers;
+namespace App\Controllers;
 
-use app\Models\Order;
-use app\Support\{Database, Http, Input};
+use App\Models\Order;
+use App\Support\{Database, Http, Input};
 use PDO;
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 

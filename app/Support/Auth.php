@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace app\Support;
+namespace App\Support;
 
-use app\Models\Permission;
+use App\Models\Permission;
 
 final class Auth
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use app\Support\{Http, Kernel, Session};
+use App\Support\{Http, Kernel, Session};
 use GuzzleHttp\Psr7\ServerRequest;
 
 if (!is_file(__DIR__ . '/../vendor/autoload.php')) {
@@ -12,8 +12,9 @@ if (!is_file(__DIR__ . '/../vendor/autoload.php')) {
 }
 
 require __DIR__ . '/../vendor/autoload.php';
-
-ini_set('display_errors', '0');
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
 try {
     Session::start();
@@ -30,6 +31,9 @@ try {
         . basename($error->getFile()) . ':' . $error->getLine()
     );
 
+    if ($error instanceof \LogicException) {
+        error_log('Chi tiết route: ' . $error->getMessage());
+    }
     $response = Http::error(500, 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.');
 }
 

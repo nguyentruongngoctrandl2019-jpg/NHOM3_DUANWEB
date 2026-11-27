@@ -1,0 +1,1 @@
+<input type="hidden" name="_csrf" value="<?= $e(\App\Support\Csrf::token()) ?>">

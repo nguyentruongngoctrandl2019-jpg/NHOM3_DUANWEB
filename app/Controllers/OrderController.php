@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace app\Controllers;
+namespace App\Controllers;
 
-use app\Models\Order;
-use app\Services\OrderContactCipher;
-use app\Support\{Auth, Http};
+use App\Models\Order;
+use App\Services\OrderContactCipher;
+use App\Support\{Auth, Http};
 use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
 
 final class OrderController

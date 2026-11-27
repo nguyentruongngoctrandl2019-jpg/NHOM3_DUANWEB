@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace app\Models;
+namespace App\Models;
 
-use app\Support\Database;
+use App\Support\Database;
 use DomainException;
 use PDO;
 
