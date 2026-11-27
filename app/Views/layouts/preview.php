@@ -14,7 +14,7 @@
             tại Cần Thơ, giao hàng toàn quốc.
         </p>
 
-        <a href="/preview.php"
+        <a href="/products"
            class="btn-primary">
             Khám phá cửa hàng
         </a>

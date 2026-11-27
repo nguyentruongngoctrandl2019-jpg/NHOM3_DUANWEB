@@ -31,6 +31,10 @@ final class View
 
         // Chuyển dữ liệu thành biến cho View
         extract($data, EXTR_SKIP);
+        $e = static fn(mixed $value): string => self::e($value);
+
+$money = static fn(int|float|string $amount): string
+    => self::money($amount);
 
         // Lưu nội dung trang vào biến $content
         ob_start();
