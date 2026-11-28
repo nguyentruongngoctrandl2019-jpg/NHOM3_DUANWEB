@@ -1,10 +1,16 @@
-<?php $title = 'Đăng ký tài khoản'; ?>
+<?php
+
+/** @var \Closure(mixed): string $e */
+/** @var string $csrf */
+
+$title = 'Đăng ký tài khoản';
+?>
 
 <section class="panel narrow">
     <h1>Đăng ký tài khoản</h1>
 
     <?php if (!empty($error)): ?>
-        <p role="alert"><?= $e($error) ?></p>
+        <p class="alert" role="alert"><?= $e($error) ?></p>
     <?php endif; ?>
 
     <form class="stack" method="post" action="/register">
@@ -12,13 +18,13 @@
 
         <label>
             Họ và tên
-            <input type="text" name="name" autocomplete="name" maxlength="100" required value="<?= $e($name ?? '') ?>">
+            <input type="text" name="name" autocomplete="name" maxlength="100" value="<?= $e($name ?? '') ?>" required>
         </label>
 
         <label>
             Email
-            <input type="email" name="email" autocomplete="email" maxlength="254" required
-                value="<?= $e($email ?? '') ?>">
+            <input type="email" name="email" autocomplete="email" maxlength="254" value="<?= $e($email ?? '') ?>"
+                required>
         </label>
 
         <label>

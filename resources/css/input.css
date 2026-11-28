@@ -1,5 +1,4 @@
-@import "tailwindcss" source(none);
-@source "../../app/Views";
+@import "tailwindcss";
 
 body {
     background: #f4f8f6;
