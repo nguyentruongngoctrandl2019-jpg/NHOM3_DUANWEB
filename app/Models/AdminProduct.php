@@ -4,46 +4,58 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Database;
+use App\Support\Money;
+
 use PDO;
 use PDOException;
 use Throwable;
+use DomainException;
 use InvalidArgumentException;
-use RuntimeException;
-use App\Support\Money;
 
 final class AdminProduct
 {
     private PDO $pdo;
+
+    private const MAX_STOCK = 2147483647;
+
+    private const SELECT = "
+        SELECT
+            p.*,
+            c.name AS category_name,
+            COALESCE(i.quantity, 0) AS stock
+        FROM products p
+        INNER JOIN categories c
+            ON c.id = p.category_id
+        LEFT JOIN inventory i
+            ON i.product_id = p.id
+            AND i.deleted_at IS NULL
+        WHERE p.deleted_at IS NULL
+    ";
+
+    // ==========================================
+    // 1. KHOI TAO MODEL
+    // ==========================================
 
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
     }
 
-    /**
-     * Lay danh sach san pham quan tri.
-     */
+    // ==========================================
+    // 2. DANH SACH SAN PHAM
+    // ==========================================
+
     public function all(string $keyword = ''): array
     {
-        $sql = "
-            SELECT
-                p.*,
-                c.name AS category_name,
-                COALESCE(i.quantity, 0) AS stock
-            FROM products p
-            INNER JOIN categories c
-                ON c.id = p.category_id
-            LEFT JOIN inventory i
-                ON i.product_id = p.id
-                AND i.deleted_at IS NULL
-            WHERE p.deleted_at IS NULL
-        ";
+        $sql = self::SELECT;
 
         $params = [];
 
         $keyword = trim($keyword);
 
         if ($keyword !== '') {
+
             $sql .= "
                 AND (
                     p.name LIKE :name
@@ -55,7 +67,7 @@ final class AdminProduct
             $params['sku'] = '%' . $keyword . '%';
         }
 
-        $sql .= " ORDER BY p.id DESC";
+        $sql .= ' ORDER BY p.id DESC';
 
         $stmt = $this->pdo->prepare($sql);
 
@@ -64,27 +76,22 @@ final class AdminProduct
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Tim san pham theo ID.
-     */
+    // ==========================================
+    // 3. TIM SAN PHAM THEO ID
+    // ==========================================
+
     public function find(int $id): ?array
     {
-        $sql = "
-            SELECT
-                p.*,
-                COALESCE(i.quantity, 0) AS stock
-            FROM products p
-            LEFT JOIN inventory i
-                ON i.product_id = p.id
-                AND i.deleted_at IS NULL
-            WHERE p.id = :id
-                AND p.deleted_at IS NULL
+        $sql = self::SELECT . "
+            AND p.id = :id
             LIMIT 1
         ";
 
         $stmt = $this->pdo->prepare($sql);
 
-        $stmt->execute(['id' => $id]);
+        $stmt->execute([
+            'id' => $id
+        ]);
 
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -93,9 +100,10 @@ final class AdminProduct
             : $product;
     }
 
-    /**
-     * Lay danh muc san pham.
-     */
+    // ==========================================
+    // 4. DANH SACH DANH MUC
+    // ==========================================
+
     public function categories(): array
     {
         $sql = "
@@ -110,36 +118,43 @@ final class AdminProduct
             ->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Kiem tra du lieu dau vao.
-     */
+    // ==========================================
+    // 5. KIEM TRA DU LIEU DAU VAO
+    // ==========================================
+
     private function validate(array $data): array
     {
-        foreach (
-            [
-                'sku',
-                'name',
-                'category_id',
-                'price',
-                'warranty_months',
-                'is_active',
-                'stock',
-                'description'
-            ] as $key
-        ) {
+        $fields = [
+            'sku',
+            'name',
+            'category_id',
+            'price',
+            'warranty_months',
+            'is_active',
+            'stock',
+            'stock_expected',
+            'description',
+        ];
+
+        foreach ($fields as $field) {
+
             if (
-                isset($data[$key])
-                && !is_scalar($data[$key])
+                isset($data[$field])
+                && !is_scalar($data[$field])
             ) {
                 throw new InvalidArgumentException(
-                    'Du lieu khong hop le: ' . $key
+                    'Dữ liệu không hợp lệ: ' . $field
                 );
             }
         }
 
-        $sku = trim((string) ($data['sku'] ?? ''));
+        $sku = trim(
+            (string) ($data['sku'] ?? '')
+        );
 
-        $name = trim((string) ($data['name'] ?? ''));
+        $name = trim(
+            (string) ($data['name'] ?? '')
+        );
 
         $description = trim(
             (string) ($data['description'] ?? '')
@@ -152,7 +167,11 @@ final class AdminProduct
         $categoryId = filter_var(
             $data['category_id'] ?? '',
             FILTER_VALIDATE_INT,
-            ['options' => ['min_range' => 1]]
+            [
+                'options' => [
+                    'min_range' => 1
+                ]
+            ]
         );
 
         $warranty = filter_var(
@@ -161,7 +180,7 @@ final class AdminProduct
             [
                 'options' => [
                     'min_range' => 0,
-                    'max_range' => 65535
+                    'max_range' => 65535,
                 ]
             ]
         );
@@ -172,7 +191,7 @@ final class AdminProduct
             [
                 'options' => [
                     'min_range' => 0,
-                    'max_range' => 2147483647
+                    'max_range' => self::MAX_STOCK,
                 ]
             ]
         );
@@ -181,34 +200,37 @@ final class AdminProduct
             $data['is_active'] ?? '1'
         );
 
-        // Validate SKU
+        // Kiem tra SKU.
 
         if (!preg_match(
-            '/^[A-Za-z0-9_-]{1,60}$/D',
+            '/\A[A-Za-z0-9_-]{1,60}\z/',
             $sku
         )) {
             throw new InvalidArgumentException(
-                'SKU khong hop le'
+                'Mã SKU không hợp lệ.'
             );
         }
 
-        // Validate ten san pham
+        // Kiem tra ten san pham.
 
         if (
             $name === ''
-            || preg_match('//u', $name) !== 1
-            || preg_match('/^.{1,180}$/usD', $name) !== 1
+            || preg_match(
+                '/\A.{1,180}\z/us',
+                $name
+            ) !== 1
         ) {
             throw new InvalidArgumentException(
-                'Ten san pham tu 1 den 180 ky tu'
+                'Tên sản phẩm phải từ 1 đến 180 ký tự.'
             );
         }
 
-        // Validate danh muc
+        // Kiem tra danh muc.
 
         if ($categoryId === false) {
+
             throw new InvalidArgumentException(
-                'Danh muc khong hop le'
+                'Danh mục không hợp lệ.'
             );
         }
 
@@ -219,48 +241,64 @@ final class AdminProduct
                 AND deleted_at IS NULL
         ");
 
-        $stmt->execute(['id' => $categoryId]);
+        $stmt->execute([
+            'id' => $categoryId
+        ]);
 
         if (!$stmt->fetchColumn()) {
+
             throw new InvalidArgumentException(
-                'Danh muc khong ton tai'
+                'Danh mục không tồn tại.'
             );
         }
 
-        // Validate gia DECIMAL(15,2)
+        // Kiem tra gia tien.
 
         if (!preg_match(
-            '/^\d{1,13}(\.\d{1,2})?$/D',
+            '/\A\d{1,13}(?:\.\d{1,2})?\z/',
             $price
         )) {
             throw new InvalidArgumentException(
-                'Gia san pham khong hop le'
+                'Giá sản phẩm không hợp lệ.'
             );
         }
 
         $priceMinor = Money::fromDecimal($price);
 
         if ($priceMinor < 0) {
+
             throw new InvalidArgumentException(
-                'Gia khong duoc am'
+                'Giá sản phẩm không được âm.'
             );
         }
+
+        // Kiem tra bao hanh.
 
         if ($warranty === false) {
+
             throw new InvalidArgumentException(
-                'Thoi gian bao hanh khong hop le'
+                'Thời gian bảo hành không hợp lệ.'
             );
         }
+
+        // Kiem tra ton kho.
 
         if ($stock === false) {
+
             throw new InvalidArgumentException(
-                'So luong ton kho khong hop le'
+                'Số lượng tồn kho không hợp lệ.'
             );
         }
 
-        if (!in_array($active, ['0', '1'], true)) {
+        // Kiem tra trang thai.
+
+        if (!in_array(
+            $active,
+            ['0', '1'],
+            true
+        )) {
             throw new InvalidArgumentException(
-                'Trang thai san pham khong hop le'
+                'Trạng thái sản phẩm không hợp lệ.'
             );
         }
 
@@ -272,13 +310,14 @@ final class AdminProduct
             'price' => Money::toDecimal($priceMinor),
             'warranty_months' => $warranty,
             'is_active' => (int) $active,
-            'stock' => $stock
+            'stock' => $stock,
         ];
     }
 
-    /**
-     * Tao slug duy nhat khi them san pham.
-     */
+    // ==========================================
+    // 6. TAO SLUG SAN PHAM
+    // ==========================================
+
     private function makeSlug(string $sku): string
     {
         return strtolower($sku)
@@ -286,9 +325,10 @@ final class AdminProduct
             . bin2hex(random_bytes(8));
     }
 
-    /**
-     * Them san pham moi.
-     */
+    // ==========================================
+    // 7. THEM SAN PHAM MOI
+    // ==========================================
+
     public function create(
         array $data,
         ?int $userId = null
@@ -296,215 +336,316 @@ final class AdminProduct
 
         $data = $this->validate($data);
 
-        $this->pdo->beginTransaction();
-
         try {
 
-            $sql = "
-                INSERT INTO products (
-                    category_id,
-                    sku,
-                    slug,
-                    name,
-                    description,
-                    price,
-                    warranty_months,
-                    is_active,
-                    created_by,
-                    updated_by
-                ) VALUES (
-                    :category_id,
-                    :sku,
-                    :slug,
-                    :name,
-                    :description,
-                    :price,
-                    :warranty_months,
-                    :is_active,
-                    :created_by,
-                    :updated_by
-                )
-            ";
-
-            $stmt = $this->pdo->prepare($sql);
-
-            $stmt->execute([
-                'category_id' => $data['category_id'],
-                'sku' => $data['sku'],
-                'slug' => $this->makeSlug($data['sku']),
-                'name' => $data['name'],
-                'description' => $data['description'],
-                'price' => $data['price'],
-                'warranty_months' =>
-                $data['warranty_months'],
-                'is_active' => $data['is_active'],
-                'created_by' => $userId,
-                'updated_by' => $userId
-            ]);
-
-            $productId = (int) $this->pdo
-                ->lastInsertId();
-
-            // Tao ton kho ban dau
-
-            $stmt = $this->pdo->prepare("
-                INSERT INTO inventory (
-                    product_id,
-                    quantity,
-                    created_by,
-                    updated_by
-                ) VALUES (
-                    :product_id,
-                    :quantity,
-                    :created_by,
-                    :updated_by
-                )
-            ");
-
-            $stmt->execute([
-                'product_id' => $productId,
-                'quantity' => $data['stock'],
-                'created_by' => $userId,
-                'updated_by' => $userId
-            ]);
-
-            // Ghi lich su nhap kho
-
-            if ($data['stock'] > 0) {
-
-                $this->recordMovement(
-                    $productId,
-                    $data['stock'],
-                    'receipt',
-                    'Nhap kho ban dau',
+            return Database::transaction(
+                $this->pdo,
+                function () use (
+                    $data,
                     $userId
-                );
-            }
+                ): int {
 
-            $this->pdo->commit();
+                    $sql = "
+                        INSERT INTO products (
+                            category_id,
+                            sku,
+                            slug,
+                            name,
+                            description,
+                            price,
+                            warranty_months,
+                            is_active,
+                            created_by,
+                            updated_by
+                        ) VALUES (
+                            :category_id,
+                            :sku,
+                            :slug,
+                            :name,
+                            :description,
+                            :price,
+                            :warranty_months,
+                            :is_active,
+                            :created_by,
+                            :updated_by
+                        )
+                    ";
 
-            return $productId;
-        } catch (Throwable $e) {
+                    $stmt = $this->pdo->prepare($sql);
 
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
-            }
+                    $stmt->execute([
+                        'category_id' =>
+                            $data['category_id'],
 
-            $this->handleException($e);
+                        'sku' => $data['sku'],
+
+                        'slug' =>
+                            $this->makeSlug($data['sku']),
+
+                        'name' => $data['name'],
+
+                        'description' =>
+                            $data['description'],
+
+                        'price' => $data['price'],
+
+                        'warranty_months' =>
+                            $data['warranty_months'],
+
+                        'is_active' =>
+                            $data['is_active'],
+
+                        'created_by' => $userId,
+
+                        'updated_by' => $userId,
+                    ]);
+
+                    $productId = (int) $this->pdo
+                        ->lastInsertId();
+
+                    // Tao ton kho ban dau.
+
+                    $stmt = $this->pdo->prepare("
+                        INSERT INTO inventory (
+                            product_id,
+                            quantity,
+                            created_by,
+                            updated_by
+                        ) VALUES (
+                            :product_id,
+                            :quantity,
+                            :created_by,
+                            :updated_by
+                        )
+                    ");
+
+                    $stmt->execute([
+                        'product_id' => $productId,
+                        'quantity' => $data['stock'],
+                        'created_by' => $userId,
+                        'updated_by' => $userId,
+                    ]);
+
+                    // Ghi lich su nhap kho.
+
+                    if ($data['stock'] > 0) {
+
+                        $this->recordMovement(
+                            $productId,
+                            $data['stock'],
+                            'receipt',
+                            'Nhập kho ban đầu',
+                            $userId
+                        );
+                    }
+
+                    return $productId;
+                }
+            );
+
+        } catch (Throwable $error) {
+
+            $this->handleException($error);
         }
     }
 
-    /**
-     * Cap nhat san pham.
-     */
+    // ==========================================
+    // 8. CAP NHAT SAN PHAM
+    // ==========================================
+
     public function update(
         int $id,
         array $data,
         ?int $userId = null
     ): void {
 
-        $data = $this->validate($data);
+        $current = $this->find($id);
 
-        $this->pdo->beginTransaction();
+        if ($current === null) {
+
+            throw new DomainException(
+                'Sản phẩm không tồn tại.'
+            );
+        }
+
+        // Giu thoi gian bao hanh neu form khong gui.
+
+        $data['warranty_months'] =
+            $data['warranty_months']
+            ?? $current['warranty_months']
+            ?? 0;
+
+        $data = $this->validate($data);
 
         try {
 
-            // Khoa product truoc inventory
+            Database::transaction(
+                $this->pdo,
+                function () use (
+                    $id,
+                    $data,
+                    $userId
+                ): void {
 
-            $stmt = $this->pdo->prepare("
-                SELECT id
-                FROM products
-                WHERE id = :id
-                    AND deleted_at IS NULL
-                FOR UPDATE
-            ");
+                    $this->lockProduct($id);
 
-            $stmt->execute(['id' => $id]);
-
-            if (!$stmt->fetchColumn()) {
-                throw new RuntimeException(
-                    'San pham khong ton tai'
-                );
-            }
-
-            // Khoa inventory
-
-            $stmt = $this->pdo->prepare("
-                SELECT quantity, deleted_at
-                FROM inventory
-                WHERE product_id = :id
-                FOR UPDATE
-            ");
-
-            $stmt->execute(['id' => $id]);
-
-            $inventory = $stmt->fetch(
-                PDO::FETCH_ASSOC
+                    $this->updateProduct(
+                        $id,
+                        $data,
+                        $userId
+                    );
+                }
             );
 
-            if (
-                $inventory === false
-                || $inventory['deleted_at'] !== null
-            ) {
-                throw new RuntimeException(
-                    'Du lieu ton kho khong hop le'
-                );
-            }
+        } catch (Throwable $error) {
 
-            $oldStock = (int) $inventory['quantity'];
-
-            // Kiem tra form co bi cu hay khong
-
-            if (isset($data['stock'])) {
-                // So luong kho se duoc xu ly ben duoi.
-            }
-
-            $sql = "
-                UPDATE products
-                SET
-                    category_id = :category_id,
-                    sku = :sku,
-                    name = :name,
-                    description = :description,
-                    price = :price,
-                    warranty_months = :warranty_months,
-                    is_active = :is_active,
-                    updated_by = :updated_by
-                WHERE id = :id
-            ";
-
-            $stmt = $this->pdo->prepare($sql);
-
-            $stmt->execute([
-                'category_id' => $data['category_id'],
-                'sku' => $data['sku'],
-                'name' => $data['name'],
-                'description' => $data['description'],
-                'price' => $data['price'],
-                'warranty_months' =>
-                $data['warranty_months'],
-                'is_active' => $data['is_active'],
-                'updated_by' => $userId,
-                'id' => $id
-            ]);
-
-            // Khong ghi de ton kho khi sua thong tin.
-            // Ton kho duoc dieu chinh bang adjustStock().
-
-            $this->pdo->commit();
-        } catch (Throwable $e) {
-
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
-            }
-
-            $this->handleException($e);
+            $this->handleException($error);
         }
     }
 
-    /**
-     * Dieu chinh ton kho theo so luong tang/giam.
-     */
+    // ==========================================
+    // 9. LUU SAN PHAM
+    // ==========================================
+
+    public function save(
+        ?int $id,
+        array $data,
+        ?int $userId = null
+    ): void {
+
+        // Them san pham moi.
+
+        if ($id === null) {
+
+            $this->create($data, $userId);
+
+            return;
+        }
+
+        // Cap nhat san pham.
+
+        $current = $this->find($id);
+
+        if ($current === null) {
+
+            throw new DomainException(
+                'Sản phẩm không tồn tại.'
+            );
+        }
+
+        $data['warranty_months'] =
+            $data['warranty_months']
+            ?? $current['warranty_months']
+            ?? 0;
+
+        $stockProvided = array_key_exists(
+            'stock',
+            $data
+        );
+
+        $stockExpected = null;
+
+        if (isset($data['stock_expected'])) {
+
+            $stockExpected = filter_var(
+                $data['stock_expected'],
+                FILTER_VALIDATE_INT,
+                [
+                    'options' => [
+                        'min_range' => 0,
+                        'max_range' => self::MAX_STOCK,
+                    ]
+                ]
+            );
+
+            if ($stockExpected === false) {
+
+                throw new InvalidArgumentException(
+                    'Tồn kho ban đầu không hợp lệ.'
+                );
+            }
+        }
+
+        $validated = $this->validate($data);
+
+        try {
+
+            Database::transaction(
+                $this->pdo,
+                function () use (
+                    $id,
+                    $validated,
+                    $stockProvided,
+                    $stockExpected,
+                    $userId
+                ): void {
+
+                    $this->lockProduct($id);
+
+                    $this->updateProduct(
+                        $id,
+                        $validated,
+                        $userId
+                    );
+
+                    // Khong thay doi kho neu form
+                    // khong gui so luong ton kho.
+
+                    if (!$stockProvided) {
+                        return;
+                    }
+
+                    // Khong ghi de ton kho khi thieu
+                    // gia tri ton kho ban dau.
+
+                    if ($stockExpected === null) {
+                        return;
+                    }
+
+                    $newStock = $validated['stock'];
+
+                    if ($newStock === $stockExpected) {
+                        return;
+                    }
+
+                    $currentStock = $this->lockStock($id);
+
+                    if ($currentStock !== $stockExpected) {
+
+                        throw new DomainException(
+                            'Tồn kho đã thay đổi. '
+                            . 'Hãy tải lại trang trước khi cập nhật.'
+                        );
+                    }
+
+                    $change = $newStock - $currentStock;
+
+                    $this->writeStock(
+                        $id,
+                        $newStock,
+                        $userId
+                    );
+
+                    $this->recordMovement(
+                        $id,
+                        $change,
+                        'adjustment',
+                        'Cập nhật tồn kho sản phẩm',
+                        $userId
+                    );
+                }
+            );
+
+        } catch (Throwable $error) {
+
+            $this->handleException($error);
+        }
+    }
+
+    // ==========================================
+    // 10. DIEU CHINH TON KHO
+    // ==========================================
+
     public function adjustStock(
         int $id,
         int $change,
@@ -514,101 +655,64 @@ final class AdminProduct
         if (
             $change === 0
             || $change < -2147483648
-            || $change > 2147483647
+            || $change > self::MAX_STOCK
         ) {
             throw new InvalidArgumentException(
-                'So luong dieu chinh khong hop le'
+                'Số lượng điều chỉnh không hợp lệ.'
             );
         }
-
-        $this->pdo->beginTransaction();
 
         try {
 
-            // Khoa product
+            Database::transaction(
+                $this->pdo,
+                function () use (
+                    $id,
+                    $change,
+                    $userId
+                ): void {
 
-            $stmt = $this->pdo->prepare("
-                SELECT id
-                FROM products
-                WHERE id = :id
-                    AND deleted_at IS NULL
-                FOR UPDATE
-            ");
+                    $this->lockProduct($id);
 
-            $stmt->execute(['id' => $id]);
+                    $currentStock = $this->lockStock($id);
 
-            if (!$stmt->fetchColumn()) {
-                throw new RuntimeException(
-                    'San pham khong ton tai'
-                );
-            }
+                    $newStock = $currentStock + $change;
 
-            // Khoa inventory
+                    if (
+                        $newStock < 0
+                        || $newStock > self::MAX_STOCK
+                    ) {
+                        throw new InvalidArgumentException(
+                            'Tồn kho vượt giới hạn cho phép.'
+                        );
+                    }
 
-            $stmt = $this->pdo->prepare("
-                SELECT quantity
-                FROM inventory
-                WHERE product_id = :id
-                    AND deleted_at IS NULL
-                FOR UPDATE
-            ");
+                    $this->writeStock(
+                        $id,
+                        $newStock,
+                        $userId
+                    );
 
-            $stmt->execute(['id' => $id]);
-
-            $quantity = $stmt->fetchColumn();
-
-            if ($quantity === false) {
-                throw new RuntimeException(
-                    'Khong tim thay ton kho'
-                );
-            }
-
-            $newStock = (int) $quantity + $change;
-
-            if (
-                $newStock < 0
-                || $newStock > 2147483647
-            ) {
-                throw new InvalidArgumentException(
-                    'Ton kho vuot gioi han cho phep'
-                );
-            }
-
-            $stmt = $this->pdo->prepare("
-                UPDATE inventory
-                SET quantity = :quantity,
-                    updated_by = :updated_by
-                WHERE product_id = :id
-            ");
-
-            $stmt->execute([
-                'quantity' => $newStock,
-                'updated_by' => $userId,
-                'id' => $id
-            ]);
-
-            $this->recordMovement(
-                $id,
-                $change,
-                'adjustment',
-                'Quan tri dieu chinh ton kho',
-                $userId
+                    $this->recordMovement(
+                        $id,
+                        $change,
+                        'adjustment',
+                        'Quản trị điều chỉnh tồn kho',
+                        $userId
+                    );
+                }
             );
 
-            $this->pdo->commit();
-        } catch (Throwable $e) {
+        } catch (Throwable $error) {
 
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
-            }
-
-            $this->handleException($e);
+            $this->handleException($error);
         }
     }
 
-    /**
-     * Ngung kinh doanh san pham.
-     */
+    // ==========================================
+    // 11. NGUNG KINH DOANH SAN PHAM
+    // ==========================================
+
     public function disable(
         int $id,
         ?int $userId = null
@@ -626,15 +730,143 @@ final class AdminProduct
 
         $stmt->execute([
             'id' => $id,
-            'updated_by' => $userId
+            'updated_by' => $userId,
         ]);
 
         return $stmt->rowCount() > 0;
     }
 
-    /**
-     * Ghi lich su thay doi ton kho.
-     */
+    // ==========================================
+    // 12. KHOA SAN PHAM
+    // ==========================================
+
+    private function lockProduct(int $id): void
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT id
+            FROM products
+            WHERE id = :id
+                AND deleted_at IS NULL
+            FOR UPDATE
+        ");
+
+        $stmt->execute([
+            'id' => $id
+        ]);
+
+        if (!$stmt->fetchColumn()) {
+
+            throw new DomainException(
+                'Sản phẩm không tồn tại.'
+            );
+        }
+    }
+
+    // ==========================================
+    // 13. KHOA TON KHO
+    // ==========================================
+
+    private function lockStock(int $id): int
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT quantity
+            FROM inventory
+            WHERE product_id = :id
+                AND deleted_at IS NULL
+            FOR UPDATE
+        ");
+
+        $stmt->execute([
+            'id' => $id
+        ]);
+
+        $quantity = $stmt->fetchColumn();
+
+        if ($quantity === false) {
+
+            throw new DomainException(
+                'Không tìm thấy dữ liệu tồn kho.'
+            );
+        }
+
+        return (int) $quantity;
+    }
+
+    // ==========================================
+    // 14. CAP NHAT THONG TIN SAN PHAM
+    // ==========================================
+
+    private function updateProduct(
+        int $id,
+        array $data,
+        ?int $userId
+    ): void {
+
+        $sql = "
+            UPDATE products
+            SET
+                category_id = :category_id,
+                sku = :sku,
+                name = :name,
+                description = :description,
+                price = :price,
+                warranty_months = :warranty_months,
+                is_active = :is_active,
+                updated_by = :updated_by
+            WHERE id = :id
+                AND deleted_at IS NULL
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+
+        $stmt->execute([
+            'category_id' => $data['category_id'],
+            'sku' => $data['sku'],
+            'name' => $data['name'],
+            'description' => $data['description'],
+            'price' => $data['price'],
+
+            'warranty_months' =>
+                $data['warranty_months'],
+
+            'is_active' => $data['is_active'],
+
+            'updated_by' => $userId,
+
+            'id' => $id,
+        ]);
+    }
+
+    // ==========================================
+    // 15. CAP NHAT SO LUONG TON KHO
+    // ==========================================
+
+    private function writeStock(
+        int $id,
+        int $quantity,
+        ?int $userId
+    ): void {
+
+        $stmt = $this->pdo->prepare("
+            UPDATE inventory
+            SET
+                quantity = :quantity,
+                updated_by = :updated_by
+            WHERE product_id = :id
+                AND deleted_at IS NULL
+        ");
+
+        $stmt->execute([
+            'quantity' => $quantity,
+            'updated_by' => $userId,
+            'id' => $id,
+        ]);
+    }
+
+    // ==========================================
+    // 16. GHI LICH SU THAY DOI TON KHO
+    // ==========================================
+
     private function recordMovement(
         int $productId,
         int $change,
@@ -671,129 +903,32 @@ final class AdminProduct
             'quantity_change' => $change,
             'reason' => $reason,
             'created_by' => $userId,
-            'updated_by' => $userId
+            'updated_by' => $userId,
         ]);
     }
 
-    /**
-     * Xu ly loi database.
-     */
+    // ==========================================
+    // 17. XU LY LOI DATABASE
+    // ==========================================
+
     private function handleException(
-        Throwable $e
+        Throwable $error
     ): never {
 
         if (
-            $e instanceof PDOException
-            && (int) ($e->errorInfo[1] ?? 0) === 1062
+            $error instanceof PDOException
+            && (int) (
+                $error->errorInfo[1] ?? 0
+            ) === 1062
         ) {
+
             throw new InvalidArgumentException(
-                'SKU hoac slug da ton tai',
+                'Dữ liệu bị trùng. Vui lòng kiểm tra SKU.',
                 0,
-                $e
+                $error
             );
         }
 
-        throw $e;
-    }
-}
-namespace app\Models;
-
-use App\Support\Database;
-use DomainException;
-use PDO;
-
-final class AdminProduct
-{
-    private const SELECT = 'SELECT p.*, c.name AS category_name, COALESCE(i.quantity, 0) AS stock
-        FROM products p JOIN categories c ON c.id = p.category_id
-        LEFT JOIN inventory i ON i.product_id = p.id WHERE p.deleted_at IS NULL';
-
-    public function __construct(private PDO $db)
-    {
-    }
-
-    public function all(): array
-    {
-        return $this->db->query(self::SELECT . ' ORDER BY p.id DESC')->fetchAll();
-    }
-
-    public function find(int $id): ?array
-    {
-        $query = $this->db->prepare(self::SELECT . ' AND p.id = ?');
-        $query->execute([$id]);
-
-        return $query->fetch() ?: null;
-    }
-
-    public function save(?int $id, array $data): void
-    {
-        Database::transaction($this->db, function () use ($id, $data): void {
-            $values = [
-                $data['category_id'],
-                $data['sku'],
-                strtolower($data['sku']),
-                $data['name'],
-                $data['description'],
-                $data['price'],
-                $data['is_active'],
-            ];
-
-            $setStock = $id === null || (int) $data['stock'] !== (int) $data['stock_expected'];
-
-            if ($id === null) {
-                $query = $this->db->prepare(
-                    'INSERT INTO products (category_id, sku, slug, name, description, price, is_active)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)'
-                );
-                $query->execute($values);
-                $id = (int) $this->db->lastInsertId();
-            } else {
-                $query = $this->db->prepare(
-                    'SELECT id FROM products WHERE id = ? AND deleted_at IS NULL FOR UPDATE'
-                );
-                $query->execute([$id]);
-
-                if (!$query->fetchColumn()) {
-                    throw new DomainException('Sản phẩm đã bị xóa.');
-                }
-
-                if ($setStock) {
-                    $stock = $this->db->prepare(
-                        'SELECT quantity FROM inventory WHERE product_id = ? FOR UPDATE'
-                    );
-                    $stock->execute([$id]);
-
-                    if ((int) $stock->fetchColumn() !== (int) $data['stock_expected']) {
-                        throw new DomainException(
-                            'Tồn kho đã thay đổi. Hãy tải lại trang sửa trước khi nhập tồn mới.'
-                        );
-                    }
-                }
-
-                $query = $this->db->prepare(
-                    'UPDATE products SET category_id = ?, sku = ?, slug = ?, name = ?,
-                        description = ?, price = ?, is_active = ? WHERE id = ?'
-                );
-                $query->execute([...$values, $id]);
-            }
-
-            if (!$setStock) {
-                return;
-            }
-
-            $query = $this->db->prepare(
-                'INSERT INTO inventory (product_id, quantity) VALUES (?, ?)
-                 ON DUPLICATE KEY UPDATE quantity = ?'
-            );
-            $query->execute([$id, $data['stock'], $data['stock']]);
-        });
-    }
-
-    public function disable(int $id): void
-    {
-        $query = $this->db->prepare(
-            'UPDATE products SET is_active = 0 WHERE id = ? AND deleted_at IS NULL'
-        );
-        $query->execute([$id]);
+        throw $error;
     }
 }

@@ -2,31 +2,27 @@
 
 declare(strict_types=1);
 
-use App\Controllers\HealthController;
+use App\Controllers\CheckoutController;
 
 return [
     [
-        'name' => 'health.index',
+        'name' => 'checkout',
         'method' => 'GET',
-        'path' => '/health',
+        'path' => '/checkout',
         'handler' => [
-            HealthController::class,
+            CheckoutController::class,
             'index'
         ],
-        'access' => 'public',
+        'access' => 'login',
     ],
     [
-        'name' => 'home.index',
-        'method' => 'GET',
-        'path' => '/',
+        'name' => 'checkout.place',
+        'method' => 'POST',
+        'path' => '/checkout',
         'handler' => [
-            HealthController::class,
-            'index'
+            CheckoutController::class,
+            'place'
         ],
-        'name' => 'health',
-        'method' => 'GET',
-        'path' => '/health',
-        'handler' => [HealthController::class, 'index'],
-        'access' => 'public',
+        'access' => 'login',
     ],
 ];

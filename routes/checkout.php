@@ -2,21 +2,27 @@
 
 declare(strict_types=1);
 
-return [];
+use App\Controllers\CheckoutController;
+
 return [
     [
         'name' => 'checkout',
         'method' => 'GET',
         'path' => '/checkout',
-        'handler' => [App\Controllers\CheckoutController::class, 'index'],
+        'handler' => [
+            CheckoutController::class,
+            'index'
+        ],
         'access' => 'login',
     ],
     [
         'name' => 'checkout.place',
         'method' => 'POST',
         'path' => '/checkout',
-        'handler' => [App\Controllers\CheckoutController::class, 'place'],
+        'handler' => [
+            CheckoutController::class,
+            'place'
+        ],
         'access' => 'login',
     ],
-];
 ];

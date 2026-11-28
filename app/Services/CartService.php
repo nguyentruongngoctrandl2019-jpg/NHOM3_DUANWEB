@@ -1,102 +1,26 @@
 <?php
-declare(strict_types=1);
-
-namespace App\Services;
-
-class CartService
-{
-    // Khởi tạo giỏ hàng trong Session
-    public function __construct()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (!isset($_SESSION['cart'])) {
-            $_SESSION['cart'] = [];
-        }
-    }
-
-    // Lấy danh sách sản phẩm trong giỏ
-    public function getItems(): array
-    {
-        return array_values($_SESSION['cart']);
-    }
-
-    // Thêm sản phẩm vào giỏ hàng
-    public function add(array $product, int $quantity = 1): void
-    {
-        $id = (int) ($product['id'] ?? 0);
-
-        if ($id <= 0 || $quantity <= 0) {
-            return;
-        }
-
-        if (isset($_SESSION['cart'][$id])) {
-            $_SESSION['cart'][$id]['quantity'] += $quantity;
-        } else {
-            $_SESSION['cart'][$id] = [
-                'id' => $id,
-                'name' => (string) ($product['name'] ?? ''),
-                'price' => (float) ($product['price'] ?? 0),
-                'image' => (string) ($product['image'] ?? ''),
-                'quantity' => $quantity
-            ];
-        }
-    }
-
-    // Cập nhật số lượng sản phẩm
-    public function update(int $productId, int $quantity): void
-    {
-        if (!isset($_SESSION['cart'][$productId])) {
-            return;
-        }
-
-        if ($quantity <= 0) {
-            $this->remove($productId);
-            return;
-        }
-
-        $_SESSION['cart'][$productId]['quantity'] = $quantity;
-    }
-
-    // Xóa một sản phẩm khỏi giỏ hàng
-    public function remove(int $productId): void
-    {
-        unset($_SESSION['cart'][$productId]);
-    }
-
-    // Tính tổng tiền giỏ hàng
-    public function getTotal(): float
-    {
-        $total = 0;
-
-        foreach ($this->getItems() as $item) {
-            $total += $item['price'] * $item['quantity'];
-        }
-
-        return $total;
-    }
-
-    // Xóa toàn bộ giỏ hàng
-    public function clear(): void
-    {
-        $_SESSION['cart'] = [];
-    }
-}
 
 declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\{Cart, CheckoutInventory};
-use App\Support\{Database, Money};
+use App\Models\Cart;
+use App\Models\CheckoutInventory;
+
+use App\Support\Database;
+use App\Support\Money;
+
 use DomainException;
 use InvalidArgumentException;
+use OverflowException;
 use PDO;
 
 final class CartService
 {
+    // ==========================================
+    // 1. KHOI TAO SERVICE
+    // ==========================================
+
     public function __construct(
         private PDO $db,
         private Cart $cart,
@@ -104,47 +28,221 @@ final class CartService
     ) {
     }
 
-    public function change(int $userId, int $productId, ?int $quantity, string $action): void
-    {
-        Database::transaction($this->db, function () use ($userId, $productId, $quantity, $action): void {
-            $cartId = $this->cart->lock($userId);
-            $current = $this->cart->quantity($cartId, $productId);
+    // ==========================================
+    // 2. THEM, CAP NHAT VA XOA SAN PHAM
+    // ==========================================
 
-            if ($action === 'remove') {
-                $this->cart->remove($cartId, $productId);
-                return;
+    public function change(
+        int $userId,
+        int $productId,
+        ?int $quantity,
+        string $action
+    ): void {
+
+        // Kiem tra ID.
+        if ($userId <= 0 || $productId <= 0) {
+            throw new InvalidArgumentException(
+                'Thông tin người dùng hoặc sản phẩm không hợp lệ.'
+            );
+        }
+
+        // Kiem tra hanh dong.
+        if (!in_array(
+            $action,
+            ['add', 'update', 'remove'],
+            true
+        )) {
+            throw new InvalidArgumentException(
+                'Thao tác giỏ hàng không hợp lệ.'
+            );
+        }
+
+        // Kiem tra so luong.
+        if (
+            $action !== 'remove'
+            && (
+                $quantity === null
+                || $quantity < 1
+                || $quantity > 1000000
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Số lượng sản phẩm không hợp lệ.'
+            );
+        }
+
+        // Su dung Transaction de bao dam du lieu.
+        Database::transaction(
+            $this->db,
+            function () use (
+                $userId,
+                $productId,
+                $quantity,
+                $action
+            ): void {
+
+                // Khoa gio hang cua nguoi dung.
+                $cartId = $this->cart->lock(
+                    $userId
+                );
+
+                // Lay so luong hien tai.
+                $current = $this->cart->quantity(
+                    $cartId,
+                    $productId
+                );
+
+                // Xoa san pham.
+                if ($action === 'remove') {
+
+                    $this->cart->remove(
+                        $cartId,
+                        $productId
+                    );
+
+                    return;
+                }
+
+                // Kiem tra san pham trong gio.
+                if (
+                    $action === 'update'
+                    && $current === null
+                ) {
+                    throw new DomainException(
+                        'Sản phẩm không có trong giỏ của bạn.'
+                    );
+                }
+
+                // Khoa va kiem tra ton kho.
+                $product = $this->inventory->lock(
+                    $productId
+                );
+
+                if (
+                    !is_array($product)
+                    || !isset($product['stock'])
+                ) {
+                    throw new DomainException(
+                        'Sản phẩm không tồn tại hoặc không khả dụng.'
+                    );
+                }
+
+                // Lay so luong ton kho.
+                $stock = (int) $product['stock'];
+
+                // Kiem tra san pham kha dung.
+                if (
+                    isset($product['available'])
+                    && !$product['available']
+                ) {
+                    throw new DomainException(
+                        'Sản phẩm đã ngừng kinh doanh.'
+                    );
+                }
+
+                // Tinh so luong moi.
+                $next = (int) $quantity;
+
+                if ($action === 'add') {
+                    $next += (int) ($current ?? 0);
+                }
+
+                // Kiem tra so luong hop le.
+                if ($next < 1 || $next > 1000000) {
+
+                    throw new DomainException(
+                        'Số lượng sản phẩm vượt giới hạn.'
+                    );
+                }
+
+                // Kiem tra ton kho.
+                if ($next > $stock) {
+
+                    throw new DomainException(
+                        'Số lượng yêu cầu vượt tồn kho hiện tại.'
+                    );
+                }
+
+                // Luu gio hang vao database.
+                $this->cart->save(
+                    $cartId,
+                    $productId,
+                    $next
+                );
             }
-
-            if ($action === 'update' && $current === null) {
-                throw new DomainException('Sản phẩm không có trong giỏ của bạn.');
-            }
-
-            $product = $this->inventory->lock($productId);
-            $next = $quantity + ($action === 'add' ? ($current ?? 0) : 0);
-
-            if ($next > $product['stock']) {
-                throw new DomainException('Số lượng yêu cầu vượt tồn kho hiện tại.');
-            }
-
-            $this->cart->save($cartId, $productId, $next);
-        });
+        );
     }
 
-    public static function summary(array $items): array
-    {
+    // ==========================================
+    // 3. TINH TONG TIEN GIO HANG
+    // ==========================================
+
+    public static function summary(
+        array $items
+    ): array {
+
         $total = 0;
+
         $canCheckout = $items !== [];
 
         try {
+
             foreach ($items as $item) {
-                $valid = $item['available'] && $item['quantity'] <= $item['stock'];
+
+                // Lay thong tin san pham.
+                $quantity = (int) (
+                    $item['quantity'] ?? 0
+                );
+
+                $stock = (int) (
+                    $item['stock'] ?? 0
+                );
+
+                $available = (bool) (
+                    $item['available'] ?? false
+                );
+
+                // Kiem tra du lieu gia.
+                if (!isset($item['price'])) {
+
+                    throw new InvalidArgumentException(
+                        'Không tìm thấy giá sản phẩm.'
+                    );
+                }
+
+                $price = (string) $item['price'];
+
+                // Kiem tra dieu kien thanh toan.
+                $valid = $available
+                    && $quantity > 0
+                    && $quantity <= $stock
+                    && $quantity <= 1000000;
+
                 $canCheckout = $canCheckout && $valid;
-                $total = Money::addLine($total, $item['price'], (int) $item['quantity']);
+
+                // Cong don tong tien.
+                $total = Money::addLine(
+                    $total,
+                    $price,
+                    $quantity
+                );
             }
 
-            return ['total' => Money::toDecimal($total), 'canCheckout' => $canCheckout];
-        } catch (InvalidArgumentException) {
-            return ['total' => null, 'canCheckout' => false];
+            // Tra ve ket qua.
+            return [
+                'total' => Money::toDecimal($total),
+                'canCheckout' => $canCheckout,
+            ];
+
+        } catch (
+            InvalidArgumentException |
+            OverflowException $error
+        ) {
+
+            return [
+                'total' => null,
+                'canCheckout' => false,
+            ];
         }
     }
 }

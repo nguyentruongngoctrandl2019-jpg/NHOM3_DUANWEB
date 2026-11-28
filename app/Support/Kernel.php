@@ -4,80 +4,178 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Controllers\AdminOrderController;
+use App\Controllers\AdminProductController;
+use App\Controllers\AuthController;
+use App\Controllers\CartController;
+use App\Controllers\CheckoutController;
+use App\Controllers\HealthController;
+use App\Controllers\OrderController;
+use App\Controllers\ProductController;
+
+use App\Models\AdminProduct;
+use App\Models\Cart;
+use App\Models\Category;
+use App\Models\CheckoutInventory;
+use App\Models\Order;
+use App\Models\Permission;
+use App\Models\Product;
+use App\Models\User;
+
+use App\Services\CartService;
+use App\Services\CheckoutService;
+
 use GuzzleHttp\Psr7\Response;
+
 use PhpDevCommunity\Router;
 use PhpDevCommunity\Exception\RouteNotFound;
 use PhpDevCommunity\Exception\MethodNotAllowed;
-use Psr\Http\Message\ServerRequestInterface;
+
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+use PDO;
 use ReflectionClass;
 use RuntimeException;
 use Throwable;
 
-class Kernel
+final class Kernel
 {
+    private ?PDO $db = null;
+
     private Router $router;
+
     private array $metadata;
+
     private string $baseUrl;
+
     private array $factories;
 
+    // Khoi tao Kernel.
     public function __construct(
-        Router $router,
-        array $metadata,
+        ?Router $router = null,
+        array $metadata = [],
         string $baseUrl = '',
         array $factories = []
     ) {
+        if ($router === null) {
+            $config = require __DIR__
+                . '/../../routes/web.php';
+
+            if (
+                !is_array($config)
+                || !isset($config['router'])
+                || !$config['router'] instanceof Router
+            ) {
+                throw new RuntimeException(
+                    'Cấu hình Router không hợp lệ.'
+                );
+            }
+
+            $router = $config['router'];
+            $metadata = $config['metadata'] ?? [];
+            $baseUrl = $config['base_url'] ?? '';
+        }
+
         $this->router = $router;
         $this->metadata = $metadata;
         $this->baseUrl = $baseUrl;
         $this->factories = $factories;
     }
 
+    // ==========================================
+    // 1. XU LY REQUEST
+    // ==========================================
+
     public function handle(
         ServerRequestInterface $request
     ): ResponseInterface {
-
         try {
-
-            // Tim route phu hop voi request.
             $matched = $this->router->match($request);
 
+        } catch (RouteNotFound $error) {
+            return Http::error(
+                404,
+                'Không tìm thấy trang.'
+            );
+
+        } catch (MethodNotAllowed $error) {
+            return Http::error(
+                405,
+                'Phương thức không được hỗ trợ.'
+            )->withHeader(
+                'Allow',
+                implode(
+                    ', ',
+                    $this->allowedMethods($request)
+                )
+            );
+        }
+
+        try {
+            // Lay thong tin Route.
             $handler = $matched->getHandler();
             $params = $matched->getAttributes();
+            $routeName = $matched->getName();
 
-            $metadata = $this->findMetadata(
-                $request,
-                $handler
-            );
+            // Kiem tra Controller va Action.
+            if (
+                !is_array($handler)
+                || count($handler) !== 2
+                || !is_string($handler[0] ?? null)
+                || !is_string($handler[1] ?? null)
+            ) {
+                throw new RuntimeException(
+                    'Route handler không hợp lệ.'
+                );
+            }
 
-            // Kiem tra quyen truy cap.
-            $guard = $this->checkAccess(
-                $metadata['access']
-            );
+            [$class, $action] = $handler;
+
+            // Lay quyen truy cap theo ten Route.
+            $metadata = $this->metadata[$routeName]
+                ?? null;
+
+            if (is_array($metadata)) {
+                $access = $metadata['access'] ?? null;
+            } else {
+                $access = $metadata;
+            }
+
+            if (!is_string($access) || $access === '') {
+                throw new RuntimeException(
+                    'Không tìm thấy quyền của Route: '
+                    . $routeName
+                );
+            }
+
+            // Cap nhat quyen nguoi dung.
+            if (
+                $class !== HealthController::class
+                && Auth::userId() !== null
+            ) {
+                Auth::refresh(
+                    new Permission($this->db())
+                );
+            }
+
+            // Kiem tra dang nhap va phan quyen.
+            $guard = $this->checkAccess($access);
 
             if ($guard !== null) {
                 return $guard;
             }
 
-            // Bao ve cac request thay doi du lieu.
-            if (
-                !in_array(
-                    strtoupper($request->getMethod()),
-                    ['GET', 'HEAD', 'OPTIONS'],
-                    true
-                )
-            ) {
+            // Kiem tra CSRF.
+            $method = strtoupper(
+                $request->getMethod()
+            );
 
-                // Ho tro tich hop CSRF tu task A03.
-                $csrfClass = __NAMESPACE__ . '\\Csrf';
-
-                if (!class_exists($csrfClass)) {
-                    return $this->json(
-                        503,
-                        'CSRF module is not ready'
-                    );
-                }
-
+            if (!in_array(
+                $method,
+                ['GET', 'HEAD', 'OPTIONS'],
+                true
+            )) {
                 $body = $request->getParsedBody();
 
                 $token = is_array($body)
@@ -85,90 +183,232 @@ class Kernel
                     : null;
 
                 if (
-                    !is_string($token) ||
-                    !$csrfClass::verify($token)
+                    !is_string($token)
+                    || !Csrf::verify($token)
                 ) {
-                    return $this->json(
+                    return Http::error(
                         403,
-                        'Invalid CSRF token'
+                        'Phiên biểu mẫu không hợp lệ.'
                     );
                 }
             }
 
-            // Lay Controller va Action.
-            [$controllerClass, $action] = $handler;
+            // Khoi tao Controller.
+            $controller = $this->makeController($class);
 
-            $controller = $this->makeController(
-                $controllerClass
-            );
-
-            // Kiem tra Action co ton tai hay khong.
             if (!is_callable([$controller, $action])) {
                 throw new RuntimeException(
-                    'Controller action is not callable'
+                    'Không tìm thấy phương thức: '
+                    . $class . '::' . $action
                 );
             }
 
-            // Goi Action cua Controller.
+            // Goi Action.
             $response = $controller->$action(
                 $request,
                 $params
             );
 
-            // Kiem tra Response theo chuan PSR-7.
+            // Kiem tra Response PSR-7.
             if (!$response instanceof ResponseInterface) {
                 throw new RuntimeException(
-                    'Controller must return ResponseInterface'
+                    'Controller phải trả về ResponseInterface.'
                 );
             }
 
             return $response;
 
-        } catch (RouteNotFound $e) {
-
-            return $this->json(
-                404,
-                'Route not found'
-            );
-
-        } catch (MethodNotAllowed $e) {
-
-            $allowed = $this->allowedMethods($request);
-
-            return $this->json(
-                405,
-                'Method not allowed'
-            )->withHeader(
-                'Allow',
-                implode(', ', $allowed)
-            );
-
-        } catch (Throwable $e) {
-
+        } catch (Throwable $error) {
             error_log(
-                get_class($e) . ': ' . $e->getMessage()
+                'Kernel: ' . (string) $error
             );
 
-            return $this->json(
-                500,
-                'Internal server error'
-            );
+            throw $error;
         }
     }
 
-    // Tim thong tin metadata cua route.
-    private function findMetadata(
-        ServerRequestInterface $request,
-        mixed $handler
+    // ==========================================
+    // 2. KET NOI DATABASE
+    // ==========================================
+
+    private function db(): PDO
+    {
+        if ($this->db === null) {
+            $config = require __DIR__
+                . '/../../config/database.php';
+
+            $this->db = Database::connect($config);
+        }
+
+        return $this->db;
+    }
+
+    // ==========================================
+    // 3. KIEM TRA QUYEN TRUY CAP
+    // ==========================================
+
+    private function checkAccess(
+        string $access
+    ): ?ResponseInterface {
+        if ($access === 'public') {
+            return null;
+        }
+
+        if (Auth::userId() === null) {
+            return new Response(
+                303,
+                ['Location' => '/login']
+            );
+        }
+
+        if (
+            $access !== 'login'
+            && !Auth::can($access)
+        ) {
+            return Http::error(
+                403,
+                'Bạn không có quyền truy cập.'
+            );
+        }
+
+        return null;
+    }
+
+    // ==========================================
+    // 4. KHOI TAO CONTROLLER
+    // ==========================================
+
+    private function makeController(
+        string $class
+    ): object {
+        // Su dung Factory tuy chinh.
+        if (isset($this->factories[$class])) {
+            $factory = $this->factories[$class];
+
+            if (!is_callable($factory)) {
+                throw new RuntimeException(
+                    'Controller Factory không hợp lệ.'
+                );
+            }
+
+            return $factory();
+        }
+
+        if (!class_exists($class)) {
+            throw new RuntimeException(
+                'Không tìm thấy Controller: ' . $class
+            );
+        }
+
+        // Health khong can Database.
+        if ($class === HealthController::class) {
+            return new HealthController();
+        }
+
+        return match ($class) {
+
+            // DANG NHAP VA DANG KY.
+            AuthController::class =>
+                new AuthController(
+                    new User($this->db())
+                ),
+
+            // SAN PHAM.
+            ProductController::class =>
+                new ProductController(
+                    new Product($this->db()),
+                    new Category($this->db())
+                ),
+
+            // GIO HANG.
+            CartController::class =>
+                new CartController(
+                    new Cart($this->db()),
+                    new CartService(
+                        $this->db(),
+                        new Cart($this->db()),
+                        new CheckoutInventory(
+                            $this->db()
+                        )
+                    )
+                ),
+
+            // THANH TOAN.
+            CheckoutController::class =>
+                new CheckoutController(
+                    new Cart($this->db()),
+                    new CheckoutService(
+                        $this->db(),
+                        new Cart($this->db()),
+                        new Order($this->db()),
+                        new CheckoutInventory(
+                            $this->db()
+                        )
+                    )
+                ),
+
+            // DON HANG KHACH HANG.
+            OrderController::class =>
+                new OrderController(
+                    new Order($this->db())
+                ),
+
+            // QUAN LY DON HANG.
+            AdminOrderController::class =>
+                new AdminOrderController(
+                    new Order($this->db()),
+                    $this->db()
+                ),
+
+            // QUAN LY SAN PHAM.
+            AdminProductController::class =>
+                new AdminProductController(
+                    new AdminProduct($this->db()),
+                    new Category($this->db())
+                ),
+
+            default =>
+                $this->createDefaultController($class),
+        };
+    }
+
+    // ==========================================
+    // 5. CONTROLLER MAC DINH
+    // ==========================================
+
+    private function createDefaultController(
+        string $class
+    ): object {
+        $reflection = new ReflectionClass($class);
+
+        $constructor = $reflection->getConstructor();
+
+        if (
+            $constructor !== null
+            && $constructor
+                ->getNumberOfRequiredParameters() > 0
+        ) {
+            throw new RuntimeException(
+                'Controller cần Factory: ' . $class
+            );
+        }
+
+        return $reflection->newInstance();
+    }
+
+    // ==========================================
+    // 6. HTTP METHOD DUOC PHEP
+    // ==========================================
+
+    private function allowedMethods(
+        ServerRequestInterface $request
     ): array {
+        $allowed = [];
 
         foreach ($this->metadata as $item) {
-
             if (
-                $item['handler'] !== $handler ||
-                $item['method'] !== strtoupper(
-                    $request->getMethod()
-                )
+                !is_array($item)
+                || !isset($item['route'], $item['method'])
             ) {
                 continue;
             }
@@ -179,46 +419,18 @@ class Kernel
             );
 
             try {
-
-                $matcher->match($request);
-
-                return $item;
-
-            } catch (RouteNotFound | MethodNotAllowed $e) {
-
-                continue;
-            }
-        }
-
-        throw new RuntimeException(
-            'Route metadata not found'
-        );
-    }
-
-    // Lay danh sach HTTP Method duoc phep.
-    private function allowedMethods(
-        ServerRequestInterface $request
-    ): array {
-
-        $allowed = [];
-
-        foreach ($this->metadata as $item) {
-
-            $matcher = new Router(
-                [$item['route']],
-                $this->baseUrl
-            );
-
-            try {
-
                 $matcher->match(
-                    $request->withMethod($item['method'])
+                    $request->withMethod(
+                        $item['method']
+                    )
                 );
 
                 $allowed[] = $item['method'];
 
-            } catch (RouteNotFound | MethodNotAllowed $e) {
-
+            } catch (
+                RouteNotFound |
+                MethodNotAllowed $error
+            ) {
                 continue;
             }
         }
@@ -228,242 +440,45 @@ class Kernel
         );
     }
 
-    // Kiem tra dang nhap va phan quyen.
-    private function checkAccess(
-        string $access
-    ): ?ResponseInterface {
+    // ==========================================
+    // 7. GUI RESPONSE
+    // ==========================================
 
-        // Route public khong yeu cau dang nhap.
-        if ($access === 'public') {
-            return null;
-        }
-
-        // Ho tro tich hop Auth tu task A03.
-        $authClass = __NAMESPACE__ . '\\Auth';
-
-        if (!class_exists($authClass)) {
-
-            return $this->json(
-                503,
-                'Authentication module is not ready'
-            );
-        }
-
-        // Chua dang nhap thi chuyen ve trang login.
-        if ($authClass::userId() === null) {
-
-            return new Response(
-                303,
-                ['Location' => '/login']
-            );
-        }
-
-        // Kiem tra quyen cua nguoi dung.
-        if (
-            $access !== 'login' &&
-            !$authClass::can($access)
-        ) {
-
-            return $this->json(
-                403,
-                'Access denied'
-            );
-        }
-
-        return null;
-    }
-
-    // Khoi tao Controller.
-    private function makeController(
-        string $class
-    ): object {
-
-        // Su dung Factory neu da duoc khai bao.
-        if (isset($this->factories[$class])) {
-
-            return ($this->factories[$class])();
-        }
-
-        // Kiem tra Controller co ton tai.
-        if (!class_exists($class)) {
-
-            throw new RuntimeException(
-                'Controller not found: ' . $class
-            );
-        }
-
-        $reflection = new ReflectionClass($class);
-
-        $constructor = $reflection->getConstructor();
-
-        // Controller co dependency phai su dung Factory.
-        if (
-            $constructor !== null &&
-            $constructor->getNumberOfRequiredParameters() > 0
-        ) {
-
-            throw new RuntimeException(
-                'Controller factory is required: ' . $class
-            );
-        }
-
-        return $reflection->newInstance();
-    }
-
-    // Tao JSON Response.
-    private function json(
-        int $status,
-        string $message
-    ): ResponseInterface {
-
-        return new Response(
-            $status,
-            [
-                'Content-Type' =>
-                    'application/json; charset=utf-8'
-            ],
-            json_encode(
-                [
-                    'status' => $status,
-                    'message' => $message
-                ],
-                JSON_UNESCAPED_UNICODE
-            )
-        );
-    }
-
-    // Gui HTTP Response ve trinh duyet.
     public function send(
         ResponseInterface $response
     ): void {
+        $status = $response->getStatusCode();
 
-        http_response_code(
-            $response->getStatusCode()
-        );
+        if (!headers_sent()) {
+            http_response_code($status);
 
-        foreach (
-            $response->getHeaders() as $name => $values
-        ) {
-
-            foreach ($values as $value) {
-
-                header(
-                    $name . ': ' . $value,
-                    false
-                );
-            }
-        }
-
-        // Request HEAD khong tra ve noi dung body.
-        if (
-            ($_SERVER['REQUEST_METHOD'] ?? '') !== 'HEAD'
-        ) {
-
-            echo $response->getBody();
-        }
-namespace app\Support;
-
-use App\Controllers\{
-    AdminOrderController,
-    AdminProductController,
-    AuthController,
-    CartController,
-    CheckoutController,
-    HealthController,
-    OrderController,
-    ProductController
-};
-use App\Models\{AdminProduct, Cart, Category, CheckoutInventory, Order, Permission, Product, User};
-use App\Services\{CartService, CheckoutService};
-use PDO;
-use PhpDevCommunity\Exception\{MethodNotAllowed, RouteNotFound};
-use Psr\Http\Message\{ResponseInterface, ServerRequestInterface};
-
-final class Kernel
-{
-    private ?PDO $db = null;
-
-    public function handle(ServerRequestInterface $request): ResponseInterface
-    {
-        [$router, $routes, $accessMap] = require __DIR__ . '/../../routes/web.php';
-        
-        try {
-            $matched = $router->match($request);
-        } catch (RouteNotFound) {
-            return Http::error(404, 'Không tìm thấy trang.');
-        } catch (MethodNotAllowed) {
-            $allowed = [];
-
-            foreach ($routes as $route) {
-                if ($route->match($request->getUri()->getPath())) {
-                    $allowed = array_merge($allowed, $route->getMethods());
+            foreach (
+                $response->getHeaders()
+                as $name => $values
+            ) {
+                foreach ($values as $value) {
+                    header(
+                        $name . ': ' . $value,
+                        false
+                    );
                 }
             }
-
-            return Http::error(
-                405,
-                'Phương thức không được hỗ trợ.',
-                ['Allow' => implode(', ', array_unique($allowed))]
-            );
         }
 
-        [$class, $action] = $matched->getHandler();
-
-        if ($class !== HealthController::class && Auth::userId() !== null) {
-            Auth::refresh(new Permission($this->db()));
-        }
-
-        $access = $accessMap[$matched->getName()];
-
-        if ($access !== 'public' && Auth::userId() === null) {
-            return Http::redirect('/login');
-        }
-
-        if ($access !== 'public' && $access !== 'login' && !Auth::can($access)) {
-            return Http::error(403, 'Bạn không có quyền truy cập.');
-        }
-
-        if ($request->getMethod() === 'POST'
-            && !Csrf::verify(Input::text(Input::form($request), '_csrf'))
-        ) {
-            return Http::error(403, 'Phiên biểu mẫu không hợp lệ. Hãy tải lại trang.');
-        }
-
-        return $this->controller($class)->$action($request, $matched->getAttributes());
-    }
-
-    private function db(): PDO
-    {
-        return $this->db ??= Database::connect(
-            require __DIR__ . '/../../config/database.php'
+        $method = strtoupper(
+            $_SERVER['REQUEST_METHOD'] ?? 'GET'
         );
-    }
 
-    private function controller(string $class): object
-    {
-        if ($class === HealthController::class) {
-            return new HealthController();
+        if (
+            $method !== 'HEAD'
+            && $status >= 200
+            && !in_array(
+                $status,
+                [204, 205, 304],
+                true
+            )
+        ) {
+            echo (string) $response->getBody();
         }
-
-        $db = $this->db();
-
-        return match ($class) {
-            AuthController::class => new AuthController(new User($db)),
-            ProductController::class => new ProductController(new Product($db), new Category($db)),
-            CartController::class => new CartController(
-                new Cart($db),
-                new CartService($db, new Cart($db), new CheckoutInventory($db))
-            ),
-            CheckoutController::class => new CheckoutController(
-                new Cart($db),
-                new CheckoutService($db, new Cart($db), new Order($db), new CheckoutInventory($db))
-            ),
-            OrderController::class => new OrderController(new Order($db)),
-            AdminOrderController::class => new AdminOrderController(new Order($db), $db),
-            AdminProductController::class => new AdminProductController(
-                new AdminProduct($db),
-                new Category($db)
-            ),
-        };
     }
 }

@@ -5,56 +5,49 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\AdminProduct;
-use GuzzleHttp\Psr7\Response;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
+use App\Models\Category;
+
+use App\Support\Auth;
+use App\Support\Http;
+use App\Support\Input;
+use App\Support\Money;
+
+use DomainException;
 use InvalidArgumentException;
-use Throwable;
+use OverflowException;
+use PDOException;
+
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
 final class AdminProductController
 {
-    private AdminProduct $model;
+    // ==========================================
+    // 1. KHOI TAO CONTROLLER
+    // ==========================================
 
-    public function __construct(AdminProduct $model)
+    public function __construct(
+        private AdminProduct $products,
+        private Category $categories
+    ) {
+    }
+
+    // ==========================================
+    // 2. KIEM TRA QUYEN QUAN TRI
+    // ==========================================
+
+    private function authorize(): ?ResponseInterface
     {
-        $this->model = $model;
-    }
+        if (Auth::userId() === null) {
 
-    // ==========================================
-    // 1. KIEM TRA QUYEN QUAN TRI
-    // ==========================================
-
-    private function authorize(
-        ServerRequestInterface $request
-    ): ?ResponseInterface {
-
-        $user = $request->getAttribute('user');
-
-        if (
-            !is_array($user)
-            || empty($user['id'])
-        ) {
-            return new Response(
-                401,
-                ['Content-Type' => 'text/plain; charset=utf-8'],
-                'Ban chua dang nhap'
-            );
+            return Http::redirect('/login');
         }
 
-        $permissions = $user['permissions'] ?? [];
+        if (!Auth::can('products.manage')) {
 
-        if (
-            !is_array($permissions)
-            || !in_array(
-                'products.manage',
-                $permissions,
-                true
-            )
-        ) {
-            return new Response(
+            return Http::error(
                 403,
-                ['Content-Type' => 'text/plain; charset=utf-8'],
-                'Ban khong co quyen quan ly san pham'
+                'Bạn không có quyền quản lý sản phẩm.'
             );
         }
 
@@ -62,65 +55,7 @@ final class AdminProductController
     }
 
     // ==========================================
-    // 2. LAY ID NGUOI DUNG
-    // ==========================================
-
-    private function userId(
-        ServerRequestInterface $request
-    ): int {
-
-        $user = $request->getAttribute('user');
-
-        return (int) $user['id'];
-    }
-
-    // ==========================================
-    // 3. KIEM TRA CSRF
-    // ==========================================
-
-    private function verifyCsrf(
-        ServerRequestInterface $request
-    ): bool {
-
-        $data = $request->getParsedBody();
-
-        $expected = $request->getAttribute(
-            'csrf_token'
-        );
-
-        $submitted = is_array($data)
-            ? ($data['_token'] ?? null)
-            : null;
-
-        return is_string($expected)
-            && is_string($submitted)
-            && $expected !== ''
-            && hash_equals($expected, $submitted);
-    }
-
-    private function guardPost(
-        ServerRequestInterface $request
-    ): ?ResponseInterface {
-
-        $denied = $this->authorize($request);
-
-        if ($denied !== null) {
-            return $denied;
-        }
-
-        if (!$this->verifyCsrf($request)) {
-            return new Response(
-                403,
-                ['Content-Type' => 'text/plain; charset=utf-8'],
-                'CSRF token khong hop le'
-            );
-        }
-
-        return null;
-    }
-
-    // ==========================================
-    // 4. HIEN THI DANH SACH SAN PHAM
+    // 3. DANH SACH SAN PHAM
     // ==========================================
 
     public function index(
@@ -128,7 +63,7 @@ final class AdminProductController
         array $params = []
     ): ResponseInterface {
 
-        $denied = $this->authorize($request);
+        $denied = $this->authorize();
 
         if ($denied !== null) {
             return $denied;
@@ -139,20 +74,30 @@ final class AdminProductController
         $keyword = $query['q'] ?? '';
 
         if (!is_string($keyword)) {
-            return new Response(400, [], 'Invalid keyword');
+
+            return Http::error(
+                400,
+                'Từ khóa không hợp lệ.'
+            );
         }
 
         $keyword = trim($keyword);
 
-        return $this->render('index', [
-            'products' => $this->model->all($keyword),
-            'keyword' => $keyword,
-            'csrfToken' => $request->getAttribute('csrf_token')
-        ]);
+        return Http::view(
+            'admin/products/index',
+            [
+                'pageTitle' => 'Quản lý sản phẩm',
+
+                'products' =>
+                    $this->products->all($keyword),
+
+                'keyword' => $keyword,
+            ]
+        );
     }
 
     // ==========================================
-    // 5. HIEN THI FORM THEM SAN PHAM
+    // 4. HIEN THI FORM THEM SAN PHAM
     // ==========================================
 
     public function create(
@@ -160,22 +105,29 @@ final class AdminProductController
         array $params = []
     ): ResponseInterface {
 
-        $denied = $this->authorize($request);
+        $denied = $this->authorize();
 
         if ($denied !== null) {
             return $denied;
         }
 
-        return $this->render('create', [
-            'categories' => $this->model->categories(),
-            'old' => [],
-            'error' => '',
-            'csrfToken' => $request->getAttribute('csrf_token')
-        ]);
+        // Ho tro route POST cu cua nhom.
+        if ($request->getMethod() === 'POST') {
+
+            return $this->store(
+                $request,
+                $params
+            );
+        }
+
+        return $this->renderForm(
+            null,
+            []
+        );
     }
 
     // ==========================================
-    // 6. LUU SAN PHAM MOI
+    // 5. LUU SAN PHAM MOI
     // ==========================================
 
     public function store(
@@ -183,46 +135,21 @@ final class AdminProductController
         array $params = []
     ): ResponseInterface {
 
-        $denied = $this->guardPost($request);
+        $denied = $this->authorize();
 
         if ($denied !== null) {
             return $denied;
         }
 
-        $data = $request->getParsedBody();
-
-        if (!is_array($data)) {
-            return new Response(400, [], 'Invalid data');
-        }
-
-        try {
-
-            $id = $this->model->create(
-                $data,
-                $this->userId($request)
-            );
-
-            return $this->redirect(
-                '/admin/products/' . $id . '/edit'
-            );
-
-        } catch (InvalidArgumentException $e) {
-
-            return $this->render('create', [
-                'categories' => $this->model->categories(),
-                'old' => $data,
-                'error' => $e->getMessage(),
-                'csrfToken' => $request->getAttribute('csrf_token')
-            ], 422);
-
-        } catch (Throwable $e) {
-
-            return $this->serverError($e);
-        }
+        return $this->saveProduct(
+            $request,
+            null,
+            []
+        );
     }
 
     // ==========================================
-    // 7. HIEN THI FORM CHINH SUA
+    // 6. HIEN THI FORM CHINH SUA
     // ==========================================
 
     public function edit(
@@ -230,10 +157,19 @@ final class AdminProductController
         array $params = []
     ): ResponseInterface {
 
-        $denied = $this->authorize($request);
+        $denied = $this->authorize();
 
         if ($denied !== null) {
             return $denied;
+        }
+
+        // Ho tro route POST cu cua nhom.
+        if ($request->getMethod() === 'POST') {
+
+            return $this->update(
+                $request,
+                $params
+            );
         }
 
         $id = $this->getId($params);
@@ -242,23 +178,20 @@ final class AdminProductController
             return $this->notFound();
         }
 
-        $product = $this->model->find($id);
+        $product = $this->products->find($id);
 
         if ($product === null) {
             return $this->notFound();
         }
 
-        return $this->render('edit', [
-            'product' => $product,
-            'categories' => $this->model->categories(),
-            'old' => [],
-            'error' => '',
-            'csrfToken' => $request->getAttribute('csrf_token')
-        ]);
+        return $this->renderForm(
+            $id,
+            $product
+        );
     }
 
     // ==========================================
-    // 8. CAP NHAT SAN PHAM
+    // 7. CAP NHAT SAN PHAM
     // ==========================================
 
     public function update(
@@ -266,7 +199,7 @@ final class AdminProductController
         array $params = []
     ): ResponseInterface {
 
-        $denied = $this->guardPost($request);
+        $denied = $this->authorize();
 
         if ($denied !== null) {
             return $denied;
@@ -278,51 +211,21 @@ final class AdminProductController
             return $this->notFound();
         }
 
-        $product = $this->model->find($id);
+        $product = $this->products->find($id);
 
         if ($product === null) {
             return $this->notFound();
         }
 
-        $data = $request->getParsedBody();
-
-        if (!is_array($data)) {
-            return new Response(400, [], 'Invalid data');
-        }
-
-        try {
-
-            // Khong cho form sua ghi de ton kho.
-            unset($data['stock']);
-
-            $this->model->update(
-                $id,
-                $data,
-                $this->userId($request)
-            );
-
-            return $this->redirect(
-                '/admin/products/' . $id . '/edit'
-            );
-
-        } catch (InvalidArgumentException $e) {
-
-            return $this->render('edit', [
-                'product' => $product,
-                'categories' => $this->model->categories(),
-                'old' => $data,
-                'error' => $e->getMessage(),
-                'csrfToken' => $request->getAttribute('csrf_token')
-            ], 422);
-
-        } catch (Throwable $e) {
-
-            return $this->serverError($e);
-        }
+        return $this->saveProduct(
+            $request,
+            $id,
+            $product
+        );
     }
 
     // ==========================================
-    // 9. NGUNG KINH DOANH SAN PHAM
+    // 8. NGUNG KINH DOANH SAN PHAM
     // ==========================================
 
     public function disable(
@@ -330,7 +233,7 @@ final class AdminProductController
         array $params = []
     ): ResponseInterface {
 
-        $denied = $this->guardPost($request);
+        $denied = $this->authorize();
 
         if ($denied !== null) {
             return $denied;
@@ -340,28 +243,23 @@ final class AdminProductController
 
         if (
             $id === null
-            || $this->model->find($id) === null
+            || $this->products->find($id) === null
         ) {
             return $this->notFound();
         }
 
-        try {
+        $this->products->disable(
+            $id,
+            (int) Auth::userId()
+        );
 
-            $this->model->disable(
-                $id,
-                $this->userId($request)
-            );
-
-            return $this->redirect('/admin/products');
-
-        } catch (Throwable $e) {
-
-            return $this->serverError($e);
-        }
+        return Http::redirect(
+            '/admin/products'
+        );
     }
 
     // ==========================================
-    // 10. DIEU CHINH TON KHO
+    // 9. DIEU CHINH TON KHO
     // ==========================================
 
     public function adjustStock(
@@ -369,7 +267,7 @@ final class AdminProductController
         array $params = []
     ): ResponseInterface {
 
-        $denied = $this->guardPost($request);
+        $denied = $this->authorize();
 
         if ($denied !== null) {
             return $denied;
@@ -381,59 +279,338 @@ final class AdminProductController
             return $this->notFound();
         }
 
-        $product = $this->model->find($id);
+        $product = $this->products->find($id);
 
         if ($product === null) {
             return $this->notFound();
         }
 
-        $data = $request->getParsedBody();
-
-        if (!is_array($data)) {
-            return new Response(400, [], 'Invalid data');
-        }
+        $form = Input::form($request);
 
         $change = filter_var(
-            $data['quantity_change'] ?? '',
+            $form['quantity_change'] ?? '',
             FILTER_VALIDATE_INT
         );
 
         try {
 
-            if ($change === false || $change === 0) {
+            if (
+                $change === false
+                || $change === 0
+            ) {
+
                 throw new InvalidArgumentException(
-                    'So luong dieu chinh khong hop le'
+                    'Số lượng điều chỉnh không hợp lệ.'
                 );
             }
 
-            $this->model->adjustStock(
+            $this->products->adjustStock(
                 $id,
                 $change,
-                $this->userId($request)
+                (int) Auth::userId()
             );
 
-            return $this->redirect(
+            return Http::redirect(
                 '/admin/products/' . $id . '/edit'
             );
 
-        } catch (InvalidArgumentException $e) {
+        } catch (
+            DomainException |
+            InvalidArgumentException |
+            OverflowException $error
+        ) {
 
-            return $this->render('edit', [
-                'product' => $this->model->find($id) ?? $product,
-                'categories' => $this->model->categories(),
-                'old' => [],
-                'error' => $e->getMessage(),
-                'csrfToken' => $request->getAttribute('csrf_token')
-            ], 422);
-
-        } catch (Throwable $e) {
-
-            return $this->serverError($e);
+            return $this->renderForm(
+                $id,
+                $this->products->find($id) ?? $product,
+                $error->getMessage(),
+                422
+            );
         }
     }
 
     // ==========================================
-    // 11. KIEM TRA ID SAN PHAM
+    // 10. XU LY LUU SAN PHAM
+    // ==========================================
+
+    private function saveProduct(
+        ServerRequestInterface $request,
+        ?int $id,
+        array $product
+    ): ResponseInterface {
+
+        $form = Input::form($request);
+
+        $fields = [
+            'category_id',
+            'sku',
+            'name',
+            'description',
+            'price',
+            'stock',
+            'stock_expected',
+            'warranty_months',
+            'is_active',
+        ];
+
+        $data = [];
+
+        foreach ($fields as $field) {
+
+            if (array_key_exists($field, $form)) {
+
+                $data[$field] = Input::text(
+                    $form,
+                    $field
+                );
+            }
+        }
+
+        $data['sku'] = strtoupper(
+            trim($data['sku'] ?? '')
+        );
+
+        $data['name'] = trim(
+            $data['name'] ?? ''
+        );
+
+        $data['description'] =
+            $data['description'] ?? '';
+
+        $data['price'] =
+            $data['price'] ?? '';
+
+        $data['warranty_months'] =
+            $data['warranty_months']
+            ?? $product['warranty_months']
+            ?? 0;
+
+        $data['is_active'] =
+            $data['is_active'] ?? '0';
+
+        if ($id === null) {
+
+            $data['stock'] =
+                $data['stock'] ?? '0';
+        }
+
+        try {
+
+            // Kiem tra danh muc.
+            $categories = $this->categories->all();
+
+            $categoryIds = array_map(
+                'intval',
+                array_column(
+                    $categories,
+                    'id'
+                )
+            );
+
+            $categoryId = Input::positive(
+                $data['category_id'] ?? null
+            );
+
+            if (
+                $categoryId === null
+                || !in_array(
+                    $categoryId,
+                    $categoryIds,
+                    true
+                )
+            ) {
+
+                throw new InvalidArgumentException(
+                    'Danh mục sản phẩm không hợp lệ.'
+                );
+            }
+
+            // Kiem tra SKU.
+            if (!preg_match(
+                '/\A[A-Z0-9][A-Z0-9_-]{0,39}\z/',
+                $data['sku']
+            )) {
+
+                throw new InvalidArgumentException(
+                    'Mã SKU không hợp lệ.'
+                );
+            }
+
+            // Kiem tra ten san pham.
+            if (
+                $data['name'] === ''
+                || preg_match(
+                    '/\A.{1,160}\z/us',
+                    $data['name']
+                ) !== 1
+            ) {
+
+                throw new InvalidArgumentException(
+                    'Tên sản phẩm phải từ 1 đến 160 ký tự.'
+                );
+            }
+
+            // Kiem tra mo ta.
+            if (preg_match(
+                '/\A.{0,3000}\z/us',
+                $data['description']
+            ) !== 1) {
+
+                throw new InvalidArgumentException(
+                    'Mô tả không được vượt quá 3000 ký tự.'
+                );
+            }
+
+            // Kiem tra va chuan hoa gia tien.
+            $data['price'] = Money::toDecimal(
+                Money::fromDecimal(
+                    $data['price']
+                )
+            );
+
+            // Kiem tra trang thai.
+            if (!in_array(
+                $data['is_active'],
+                ['0', '1'],
+                true
+            )) {
+
+                throw new InvalidArgumentException(
+                    'Trạng thái sản phẩm không hợp lệ.'
+                );
+            }
+
+            // Kiem tra ton kho.
+            if (isset($data['stock'])) {
+
+                $stock = filter_var(
+                    $data['stock'],
+                    FILTER_VALIDATE_INT,
+                    [
+                        'options' => [
+                            'min_range' => 0,
+                            'max_range' => 1000000,
+                        ]
+                    ]
+                );
+
+                if ($stock === false) {
+
+                    throw new InvalidArgumentException(
+                        'Số lượng tồn kho không hợp lệ.'
+                    );
+                }
+
+                $data['stock'] = $stock;
+            }
+
+            // Khong ghi de ton kho neu form
+            // khong gui stock_expected.
+            if (
+                $id !== null
+                && !isset($data['stock_expected'])
+            ) {
+
+                unset($data['stock']);
+            }
+
+            // Luu du lieu.
+            $this->products->save(
+                $id,
+                $data,
+                (int) Auth::userId()
+            );
+
+            return Http::redirect(
+                '/admin/products'
+            );
+
+        } catch (
+            DomainException |
+            InvalidArgumentException |
+            OverflowException $error
+        ) {
+
+            return $this->renderForm(
+                $id,
+                array_replace($product, $data),
+                $error->getMessage(),
+                422,
+                $data
+            );
+
+        } catch (PDOException $error) {
+
+            if (
+                (int) ($error->errorInfo[1] ?? 0)
+                !== 1062
+            ) {
+                throw $error;
+            }
+
+            return $this->renderForm(
+                $id,
+                array_replace($product, $data),
+                'Mã SKU đã tồn tại.',
+                422,
+                $data
+            );
+        }
+    }
+
+    // ==========================================
+    // 11. HIEN THI FORM SAN PHAM
+    // ==========================================
+
+    private function renderForm(
+        ?int $id,
+        array $product,
+        ?string $error = null,
+        int $status = 200,
+        array $old = []
+    ): ResponseInterface {
+
+        $categories = $this->categories->all();
+
+        $base = __DIR__
+            . '/../Views/admin/products/';
+
+        // Uu tien form dung chung.
+        if (is_file($base . 'form.php')) {
+
+            $view = 'admin/products/form';
+
+        } else {
+
+            // Ho tro form rieng cua nhom.
+            $view = $id === null
+                ? 'admin/products/create'
+                : 'admin/products/edit';
+        }
+
+        return Http::view(
+            $view,
+            [
+                'pageTitle' => $id === null
+                    ? 'Thêm sản phẩm'
+                    : 'Chỉnh sửa sản phẩm',
+
+                'id' => $id,
+
+                'product' => $product,
+
+                'categories' => $categories,
+
+                'old' => $old,
+
+                'error' => $error,
+            ],
+            $status
+        );
+    }
+
+    // ==========================================
+    // 12. KIEM TRA ID SAN PHAM
     // ==========================================
 
     private function getId(array $params): ?int
@@ -441,195 +618,27 @@ final class AdminProductController
         $id = filter_var(
             $params['id'] ?? '',
             FILTER_VALIDATE_INT,
-            ['options' => ['min_range' => 1]]
+            [
+                'options' => [
+                    'min_range' => 1,
+                ]
+            ]
         );
 
-        return $id === false ? null : $id;
+        return $id === false
+            ? null
+            : $id;
     }
 
     // ==========================================
-    // 12. HIEN THI VIEW
-    // ==========================================
-
-    private function render(
-        string $view,
-        array $data = [],
-        int $status = 200
-    ): ResponseInterface {
-
-        $file = __DIR__
-            . '/../Views/admin/products/'
-            . $view
-            . '.php';
-
-        if (!is_file($file)) {
-
-            return new Response(
-                500,
-                ['Content-Type' => 'text/plain; charset=utf-8'],
-                'View chua duoc tao'
-            );
-        }
-
-        extract($data, EXTR_SKIP);
-
-        ob_start();
-
-        try {
-
-            require $file;
-
-            $html = ob_get_clean();
-
-            return new Response(
-                $status,
-                ['Content-Type' => 'text/html; charset=utf-8'],
-                $html
-            );
-
-        } catch (Throwable $e) {
-
-            ob_end_clean();
-
-            return $this->serverError($e);
-        }
-    }
-
-    // ==========================================
-    // 13. CHUYEN HUONG
-    // ==========================================
-
-    private function redirect(
-        string $url
-    ): ResponseInterface {
-
-        return new Response(
-            303,
-            ['Location' => $url]
-        );
-    }
-
-    // ==========================================
-    // 14. LOI 404
+    // 13. XU LY LOI 404
     // ==========================================
 
     private function notFound(): ResponseInterface
     {
-        return new Response(
+        return Http::error(
             404,
-            ['Content-Type' => 'text/plain; charset=utf-8'],
-            'San pham khong ton tai'
+            'Không tìm thấy sản phẩm.'
         );
-    }
-
-    // ==========================================
-    // 15. LOI HE THONG
-    // ==========================================
-
-    private function serverError(
-        Throwable $e
-    ): ResponseInterface {
-
-        error_log($e->getMessage());
-
-        return new Response(
-            500,
-            ['Content-Type' => 'text/plain; charset=utf-8'],
-            'Da xay ra loi he thong'
-        );
-    }
-}
-namespace app\Controllers;
-
-use App\Models\{AdminProduct, Category};
-use App\Support\{Http, Input, Money};
-use DomainException;
-use InvalidArgumentException;
-use PDOException;
-use Psr\Http\Message\{ServerRequestInterface, ResponseInterface};
-
-final class AdminProductController
-{
-    public function __construct(private AdminProduct $products, private Category $categories)
-    {
-    }
-
-    public function index(ServerRequestInterface $request, array $params): ResponseInterface
-    {
-        return Http::view('admin/products/index', ['products' => $this->products->all()]);
-    }
-
-    public function create(ServerRequestInterface $request, array $params): ResponseInterface
-    {
-        return $this->form($request, null, []);
-    }
-
-    public function edit(ServerRequestInterface $request, array $params): ResponseInterface
-    {
-        $id = Input::positive($params['id'] ?? null);
-        $product = $id === null ? null : $this->products->find($id);
-
-        return $product === null
-            ? Http::error(404, 'Không tìm thấy sản phẩm.')
-            : $this->form($request, $id, $product);
-    }
-
-    public function disable(ServerRequestInterface $request, array $params): ResponseInterface
-    {
-        $id = Input::positive($params['id'] ?? null);
-
-        if ($id === null || $this->products->find($id) === null) {
-            return Http::error(404, 'Không tìm thấy sản phẩm.');
-        }
-
-        $this->products->disable($id);
-        return Http::redirect('/admin/products');
-    }
-
-    private function form(ServerRequestInterface $request, ?int $id, array $product): ResponseInterface
-    {
-        $categories = $this->categories->all();
-
-        if ($request->getMethod() !== 'POST') {
-            return Http::view('admin/products/form', compact('id', 'product', 'categories'));
-        }
-
-        $form = Input::form($request);
-        foreach (['category_id', 'sku', 'name', 'description', 'price', 'stock', 'stock_expected', 'is_active'] as $field) {
-            $product[$field] = Input::text($form, $field);
-        }
-
-        $product['sku'] = strtoupper($product['sku']);
-        $categoryIds = array_map('intval', array_column($categories, 'id'));
-
-        try {
-            if (!in_array(Input::positive($product['category_id']), $categoryIds, true)
-                || !preg_match('/\A[A-Z0-9][A-Z0-9-]{0,39}\z/', $product['sku'])
-                || $product['name'] === ''
-                || mb_strlen($product['name']) > 160
-                || mb_strlen($product['description']) > 3000
-                || ($product['stock'] !== '0' && Input::positive($product['stock'], 1000000) === null)
-                || ($id !== null && $product['stock_expected'] !== '0'
-                    && Input::positive($product['stock_expected'], 4294967295) === null)
-                || !in_array($product['is_active'], ['0', '1'], true)
-            ) {
-                throw new InvalidArgumentException('Kiểm tra SKU, tên, danh mục, tồn và trạng thái sản phẩm.');
-            }
-
-            $product['price'] = Money::toDecimal(Money::fromDecimal($product['price']));
-            $this->products->save($id, $product);
-
-            return Http::redirect('/admin/products');
-        } catch (DomainException | InvalidArgumentException $exception) {
-            $error = $exception->getMessage();
-        } catch (PDOException $exception) {
-            if (($exception->errorInfo[1] ?? null) !== 1062) {
-                throw $exception;
-            }
-
-            $error = 'SKU này đã tồn tại.';
-        }
-
-        return Http::view('admin/products/form', compact('id', 'product', 'categories', 'error'), 422);
     }
 }

@@ -1,4 +1,3 @@
-
 <?php
 
 declare(strict_types=1);
@@ -13,17 +12,13 @@ return [
 
     [
         'name' => 'admin.products.index',
-
         'method' => 'GET',
-
         'path' => '/admin/products',
-
         'handler' => [
             AdminProductController::class,
             'index'
         ],
-
-        'access' => 'products.manage'
+        'access' => 'products.manage',
     ],
 
     // ==========================================
@@ -32,17 +27,13 @@ return [
 
     [
         'name' => 'admin.products.create',
-
         'method' => 'GET',
-
         'path' => '/admin/products/create',
-
         'handler' => [
             AdminProductController::class,
             'create'
         ],
-
-        'access' => 'products.manage'
+        'access' => 'products.manage',
     ],
 
     // ==========================================
@@ -51,17 +42,13 @@ return [
 
     [
         'name' => 'admin.products.store',
-
         'method' => 'POST',
-
         'path' => '/admin/products/create',
-
         'handler' => [
             AdminProductController::class,
             'store'
         ],
-
-        'access' => 'products.manage'
+        'access' => 'products.manage',
     ],
 
     // ==========================================
@@ -70,17 +57,13 @@ return [
 
     [
         'name' => 'admin.products.edit',
-
         'method' => 'GET',
-
         'path' => '/admin/products/{id}/edit',
-
         'handler' => [
             AdminProductController::class,
             'edit'
         ],
-
-        'access' => 'products.manage'
+        'access' => 'products.manage',
     ],
 
     // ==========================================
@@ -89,17 +72,13 @@ return [
 
     [
         'name' => 'admin.products.update',
-
         'method' => 'POST',
-
         'path' => '/admin/products/{id}/edit',
-
         'handler' => [
             AdminProductController::class,
             'update'
         ],
-
-        'access' => 'products.manage'
+        'access' => 'products.manage',
     ],
 
     // ==========================================
@@ -108,17 +87,13 @@ return [
 
     [
         'name' => 'admin.products.disable',
-
         'method' => 'POST',
-
         'path' => '/admin/products/{id}/disable',
-
         'handler' => [
             AdminProductController::class,
             'disable'
         ],
-
-        'access' => 'products.manage'
+        'access' => 'products.manage',
     ],
 
     // ==========================================
@@ -127,60 +102,13 @@ return [
 
     [
         'name' => 'admin.products.stock',
-
         'method' => 'POST',
-
         'path' => '/admin/products/{id}/stock',
-
         'handler' => [
             AdminProductController::class,
             'adjustStock'
         ],
+        'access' => 'products.manage',
+    ],
 
-        'access' => 'products.manage'
-    ]
-
-];
-    [
-        'name' => 'admin.products.index',
-        'method' => 'GET',
-        'path' => '/admin/products',
-        'handler' => [AdminProductController::class, 'index'],
-        'access' => 'products.manage',
-    ],
-    [
-        'name' => 'admin.products.create',
-        'method' => 'GET',
-        'path' => '/admin/products/create',
-        'handler' => [AdminProductController::class, 'create'],
-        'access' => 'products.manage',
-    ],
-    [
-        'name' => 'admin.products.store',
-        'method' => 'POST',
-        'path' => '/admin/products/create',
-        'handler' => [AdminProductController::class, 'create'],
-        'access' => 'products.manage',
-    ],
-    [
-        'name' => 'admin.products.edit',
-        'method' => 'GET',
-        'path' => '/admin/products/{id}/edit',
-        'handler' => [AdminProductController::class, 'edit'],
-        'access' => 'products.manage',
-    ],
-    [
-        'name' => 'admin.products.update',
-        'method' => 'POST',
-        'path' => '/admin/products/{id}/edit',
-        'handler' => [AdminProductController::class, 'edit'],
-        'access' => 'products.manage',
-    ],
-    [
-        'name' => 'admin.products.disable',
-        'method' => 'POST',
-        'path' => '/admin/products/{id}/disable',
-        'handler' => [AdminProductController::class, 'disable'],
-        'access' => 'products.manage',
-    ],
 ];
